@@ -1,16 +1,16 @@
 import mongoose from 'mongoose'
 
 // ─── Connection (cached across hot-reloads in dev) ────────────────────────────
-const MONGODB_URI = process.env.MONGODB_URI
-
-if (!MONGODB_URI) {
-  throw new Error('Missing MONGODB_URI environment variable')
-}
-
 let cached = global._mongoose || { conn: null, promise: null }
 global._mongoose = cached
 
 async function connectDB() {
+  const MONGODB_URI = process.env.MONGODB_URI
+  
+  if (!MONGODB_URI) {
+    throw new Error('Missing MONGODB_URI environment variable')
+  }
+
   if (cached.conn) return cached.conn
   if (!cached.promise) {
     cached.promise = mongoose.connect(MONGODB_URI, {
