@@ -4,12 +4,13 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Plus, Edit2, Share2, X, Check, Image as ImageIcon,
   ChevronLeft, ChevronRight, CheckCircle2, Link as LinkIcon,
-  Loader2
+  Loader2, Lock, Unlock
 } from 'lucide-react'
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '@/lib/api'
 import ProductFormModal from './ProductFormModal'
 import LightboxModal from './LightboxModal'
 import ShareOptionsModal from './ShareOptionsModal'
+import AdminLoginModal from './AdminLoginModal'
 
 export default function CatalogClient({ initialSharedIds = [], initialFilter = 'all' }) {
   const [products, setProducts] = useState([])
@@ -25,6 +26,7 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
   const [currentProduct, setCurrentProduct] = useState(null)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [toast, setToast] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const isSharedView = sharedIds.length > 0
 
@@ -126,6 +128,26 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
 
         {!isSharedView && (
           <div className="flex gap-1.5 sm:gap-2 items-center shrink-0 ml-2">
+            {/* Admin Toggle Button */}
+            <button 
+              onClick={() => {
+                if (isAdmin) {
+                  setIsAdmin(false)
+                  showToast('Admin mode disabled')
+                } else {
+                  setActiveModal('adminLogin')
+                }
+              }}
+              className={`p-1.5 sm:p-2 rounded-full transition-colors ${
+                isAdmin 
+                  ? 'bg-green-100 text-green-600 border border-green-200' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={isAdmin ? "Lock Admin" : "Unlock Admin"}
+            >
+              {isAdmin ? <Unlock size={18} className="sm:size-5" /> : <Lock size={18} className="sm:size-5" />}
+            </button>
+
             {isSelectionMode ? (
               <>
                 <button
@@ -217,6 +239,7 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
                   setActiveModal('edit')
                 }}
                 hideControls={isSharedView}
+                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -224,7 +247,7 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       </main>
 
       {/* ── FAB ── */}
-      {!isSharedView && !isSelectionMode && (
+      {!isSharedView && !isSelectionMode && isAdmin && (
         <button
           onClick={() => { setCurrentProduct(null); setActiveModal('add') }}
           className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-transform z-20"
@@ -235,6 +258,17 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       )}
 
       {/* ── MODALS ── */}
+      {activeModal === 'adminLogin' && (
+        <AdminLoginModal
+          onClose={() => setActiveModal(null)}
+          onSuccess={() => {
+            setIsAdmin(true)
+            setActiveModal(null)
+            showToast('Admin mode enabled')
+          }}
+        />
+      )}
+
       {activeModal === 'shareOptions' && (
         <ShareOptionsModal
           onClose={() => setActiveModal(null)}
@@ -274,7 +308,7 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
 
-function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdit, hideControls }) {
+function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdit, hideControls, isAdmin }) {
   return (
     <div className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
       isSelected ? 'ring-2 ring-blue-500 border-transparent' : 'border-gray-100'
@@ -322,7 +356,7 @@ function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdi
               <p className="text-xs text-gray-400 mt-0.5">Qty: {product.quantity}</p>
             )}
           </div>
-          {!hideControls && !isSelectionMode && (
+          {!hideControls && !isSelectionMode && isAdmin && (
             <button
               onClick={e => { e.stopPropagation(); onEdit() }}
               className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg shrink-0"

@@ -1,10 +1,11 @@
 import CatalogClient from '@/components/CatalogClient'
 
-export default function CatalogPage({ searchParams }) {
-  const sharedIds = searchParams?.shared
-    ? searchParams.shared.split(',').filter(Boolean)
+export default async function CatalogPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams
+  const sharedIds = resolvedSearchParams?.shared
+    ? resolvedSearchParams.shared.split(',').filter(Boolean)
     : []
-  const filterParam = searchParams?.filter || 'all'
+  const filterParam = resolvedSearchParams?.filter || 'all'
 
   return <CatalogClient initialSharedIds={sharedIds} initialFilter={filterParam} />
 }
