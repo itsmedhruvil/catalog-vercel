@@ -29,6 +29,7 @@ const productSchema = new mongoose.Schema(
     category:    { type: String, enum: ['branded', 'unbranded'], default: 'unbranded' },
     description: { type: String, default: '' },
     images:      { type: [String], default: [] },
+    quantity:    { type: Number, default: 0, min: 0 },
   },
   {
     timestamps: true,

@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { name, price, category, description, images } = body
+    const { name, price, category, description, images, quantity } = body
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
@@ -28,6 +28,7 @@ export async function POST(request) {
       category: category || 'unbranded',
       description: description?.trim() || '',
       images: Array.isArray(images) ? images : [],
+      quantity: typeof quantity === 'number' && quantity >= 0 ? quantity : 0,
     })
 
     return NextResponse.json(product, { status: 201 })

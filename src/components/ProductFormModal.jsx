@@ -8,8 +8,8 @@ export default function ProductFormModal({ product, onClose, onSave, onDelete })
   const isEdit = !!product
   const [form, setForm] = useState(
     product
-      ? { ...product }
-      : { name: '', price: '', category: 'branded', description: '', images: [] }
+      ? { ...product, quantity: product.quantity ?? 0 }
+      : { name: '', price: '', category: 'branded', description: '', images: [], quantity: 0 }
   )
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -138,8 +138,8 @@ export default function ProductFormModal({ product, onClose, onSave, onDelete })
               />
             </div>
 
-            {/* Price + Category */}
-            <div className="flex gap-4">
+            {/* Price + Category + Quantity */}
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Price / Code</label>
                 <input
@@ -162,6 +162,18 @@ export default function ProductFormModal({ product, onClose, onSave, onDelete })
                   <option value="branded">Branded</option>
                   <option value="unbranded">Unbranded</option>
                 </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={form.quantity}
+                  onChange={handleChange}
+                  placeholder="0"
+                  min="0"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                />
               </div>
             </div>
 

@@ -116,31 +116,31 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
     <div className="min-h-screen bg-gray-50 pb-24">
 
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-20 bg-white shadow-sm px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">
+      <header className="sticky top-0 z-20 bg-white shadow-sm px-3 sm:px-4 py-3 flex items-center justify-between">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">
             {isSharedView ? 'Curated Collection' : 'My Catalog'}
           </h1>
-          {!isSharedView && <p className="text-xs text-gray-500">Manage &amp; Share Products</p>}
+          {!isSharedView && <p className="text-xs text-gray-500 hidden sm:block">Manage & Share Products</p>}
         </div>
 
         {!isSharedView && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1.5 sm:gap-2 items-center shrink-0 ml-2">
             {isSelectionMode ? (
               <>
                 <button
                   onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()) }}
-                  className="p-2 bg-gray-100 text-gray-600 rounded-full"
+                  className="p-1.5 sm:p-2 bg-gray-100 text-gray-600 rounded-full"
                 >
-                  <X size={20} />
+                  <X size={18} className="sm:size-5" />
                 </button>
                 {selectedIds.size > 0 && (
                   <button
                     onClick={shareSelected}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold"
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-full text-xs sm:text-sm font-semibold"
                   >
-                    <Share2 size={15} />
-                    Share ({selectedIds.size})
+                    <Share2 size={14} className="sm:size-4" />
+                    <span className="hidden sm:inline">Share </span>({selectedIds.size})
                   </button>
                 )}
               </>
@@ -148,17 +148,17 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
               <>
                 <button
                   onClick={() => setActiveModal('shareOptions')}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+                  className="p-1.5 sm:p-2 text-gray-600 hover:bg-gray-100 rounded-full"
                   title="Share options"
                 >
-                  <LinkIcon size={22} />
+                  <LinkIcon size={20} className="sm:size-5.5" />
                 </button>
                 <button
                   onClick={() => setIsSelectionMode(true)}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+                  className="p-1.5 sm:p-2 text-gray-600 hover:bg-gray-100 rounded-full"
                   title="Select products to share"
                 >
-                  <CheckCircle2 size={22} />
+                  <CheckCircle2 size={20} className="sm:size-5.5" />
                 </button>
               </>
             )}
@@ -318,6 +318,9 @@ function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdi
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-gray-900 truncate">{product.name}</h3>
             {product.price && <p className="text-sm text-gray-500 mt-0.5">{product.price}</p>}
+            {product.quantity !== undefined && (
+              <p className="text-xs text-gray-400 mt-0.5">Qty: {product.quantity}</p>
+            )}
           </div>
           {!hideControls && !isSelectionMode && (
             <button
