@@ -7,6 +7,8 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
   const [mainImageIndex, setMainImageIndex] = useState(0)
   const [isMagnifying, setIsMagnifying] = useState(false)
   const [magnifierPosition, setMagnifierPosition] = useState({ x: 0, y: 0 })
+  const [isImagePopupOpen, setIsImagePopupOpen] = useState(false)
+  const [popupImageIndex, setPopupImageIndex] = useState(0)
 
   const nextImage = () => {
     if (images.length > 1) {
@@ -24,9 +26,24 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
     setMainImageIndex(index)
   }
 
-  const openImagePopup = () => {
-    if (onImageClick) {
-      onImageClick(mainImageIndex)
+  const openImagePopup = (index) => {
+    setPopupImageIndex(index || mainImageIndex)
+    setIsImagePopupOpen(true)
+  }
+
+  const closeImagePopup = () => {
+    setIsImagePopupOpen(false)
+  }
+
+  const nextPopupImage = () => {
+    if (images.length > 1) {
+      setPopupImageIndex((prev) => (prev + 1) % images.length)
+    }
+  }
+
+  const prevPopupImage = () => {
+    if (images.length > 1) {
+      setPopupImageIndex((prev) => (prev - 1 + images.length) % images.length)
     }
   }
 
@@ -64,7 +81,11 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
           onMouseMove={handleMouseMove}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          onClick={openImagePopup}
+          onClick={() => {
+            if (window.innerWidth < 1024) {
+              openImagePopup()
+            }
+          }}
         >
           {images[mainImageIndex] ? (
             <img
@@ -119,7 +140,12 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
           {images.map((image, index) => (
             <button
               key={index}
-              onClick={() => selectImage(index)}
+              onClick={() => {
+                selectImage(index)
+                if (window.innerWidth < 1024) {
+                  openImagePopup(index)
+                }
+              }}
               className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
                 index === mainImageIndex 
                   ? 'border-blue-500 ring-2 ring-blue-200' 
@@ -137,6 +163,50 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
               )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Image Popup Modal */}
+      {isImagePopupOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-6xl max-h-full">
+            {/* Close Button */}
+            <button
+              onClick={closeImagePopup}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Navigation Arrows */}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={prevPopupImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 text-white rounded-full shadow-lg hover:bg-black/70 transition-all z-10"
+                >
+                  <ChevronLeft size={32} />
+                </button>
+                <button
+                  onClick={nextPopupImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 text-white rounded-full shadow-lg hover:bg-black/70 transition-all z-10"
+                >
+                  <ChevronRight size={32} />
+                </button>
+              </>
+            )}
+
+            {/* Main Image */}
+            <div className="flex items-center justify-center">
+              <img
+                src={images[popupImageIndex]}
+                alt={`${productName} popup`}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
