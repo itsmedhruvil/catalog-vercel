@@ -8,7 +8,7 @@ export default async function ProductPage({ params }) {
   
   try {
     // Fetch the specific product using the API
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/products/${id}`, {
+    const res = await fetch(`/api/products/${id}`, {
       cache: 'no-store'
     })
     

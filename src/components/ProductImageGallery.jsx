@@ -67,7 +67,7 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
             </>
           )}
 
-          {/* Zoom Button */}
+          {/* Inquiry Button */}
           <button
             onClick={openWhatsApp}
             className="absolute bottom-4 right-4 p-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all transform hover:scale-105"

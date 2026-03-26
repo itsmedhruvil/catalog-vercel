@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Edit2,
   Share2,
   X,
   Check,
-  Image as ImageIcon,
+  Image,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -62,6 +63,7 @@ export default function CatalogClient({
   const [isAdmin, setIsAdmin] = useState(false);
   const [categories, setCategories] = useState(["branded", "unbranded"]);
 
+  const router = useRouter();
   const isSharedView = sharedIds.length > 0;
 
   // ── Load products ────────────────────────────────────────────────────────
@@ -320,7 +322,7 @@ export default function CatalogClient({
           </div>
         ) : displayed.length === 0 ? (
           <div className="text-center py-24 text-gray-400">
-            <ImageIcon className="mx-auto mb-4 opacity-20" size={64} />
+            <Image className="mx-auto mb-4 opacity-20" size={64} />
             <p className="font-medium">No products yet</p>
             {!isSharedView && (
               <p className="text-sm mt-1">Tap + to add your first item</p>
@@ -340,7 +342,7 @@ export default function CatalogClient({
                     return;
                   }
                   // Navigate to product page
-                  window.location.href = `/product/${product.id}`;
+                  router.push(`/product/${product.id}`);
                 }}
                 onEdit={() => {
                   if (isAdmin) {
@@ -490,7 +492,7 @@ function ProductCard({
             />
         ) : (
           <div className="flex items-center justify-center w-full h-full text-gray-300">
-            <ImageIcon size={48} />
+            <Image size={48} />
           </div>
         )}
 
