@@ -2,21 +2,14 @@ import { notFound } from 'next/navigation'
 import ProductImageGallery from '@/components/ProductImageGallery'
 import ProductDetails from '@/components/ProductDetails'
 import InquiryButton from '@/components/InquiryButton'
+import { getProductById } from '@/lib/db'
 
 export default async function ProductPage({ params }) {
   const { id } = await params
   
   try {
-    // Fetch the specific product using the API
-    const res = await fetch(`/api/products/${id}`, {
-      cache: 'no-store'
-    })
-    
-    if (!res.ok) {
-      notFound()
-    }
-    
-    const product = await res.json()
+    // Fetch the specific product directly from the database
+    const product = await getProductById(id)
     
     if (!product) {
       notFound()
