@@ -4,7 +4,8 @@ import { getProductById, updateProductById, deleteProductById } from '@/lib/db'
 // GET /api/products/:id
 export async function GET(request, { params }) {
   try {
-    const product = await getProductById(params.id)
+    const { id } = await params
+    const product = await getProductById(id)
     if (!product) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json(product)
   } catch (err) {
@@ -17,9 +18,29 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const body = await request.json()
-    const updated = await updateProductById(params.id, body)
-    if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(updated)
+    const { id } = await params
+    
+    // Validate required fields
+    const { name, description, price, category, images } = body
+    
+    if (!name || !description || !price || !category) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    
+    // Update the product
+    const updatedProduct = await updateProductById(id, {
+      name,
+      description,
+      price,
+      category,
+      images
+    })
+    
+    if (!updatedProduct) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+    
+    return NextResponse.json(updatedProduct)
   } catch (err) {
     console.error('Failed to update product:', err.message)
     return NextResponse.json({ error: 'Failed to update product' }, { status: 500 })
