@@ -4,12 +4,13 @@ import { useState, useRef } from 'react'
 import { X, Plus, Loader2, Trash2 } from 'lucide-react'
 import { uploadImage } from '@/lib/api'
 
-export default function ProductFormModal({ product, onClose, onSave, onDelete }) {
+export default function ProductFormModal({ product, categories, onClose, onSave, onDelete }) {
   const isEdit = !!product
+  const defaultCategory = categories.length > 0 ? categories[0] : 'uncategorized'
   const [form, setForm] = useState(
     product
-      ? { ...product, quantity: product.quantity ?? 0 }
-      : { name: '', price: '', category: 'branded', description: '', images: [], quantity: 0 }
+      ? { ...product, availableQuantity: product.availableQuantity ?? '', size: product.size ?? '', pcsPerCarton: product.pcsPerCarton ?? '' }
+      : { name: '', price: '', category: defaultCategory, description: '', images: [], availableQuantity: '', size: '', pcsPerCarton: '' }
   )
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -138,16 +139,16 @@ export default function ProductFormModal({ product, onClose, onSave, onDelete })
               />
             </div>
 
-            {/* Price + Category + Quantity */}
+            {/* Price + Category */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Price / Code</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Price</label>
                 <input
                   type="text"
                   name="price"
                   value={form.price}
                   onChange={handleChange}
-                  placeholder="₹0 or SKU"
+                  placeholder="e.g. ₹500"
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                 />
               </div>
@@ -157,24 +158,54 @@ export default function ProductFormModal({ product, onClose, onSave, onDelete })
                   name="category"
                   value={form.category}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 bg-white"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 bg-white capitalize"
                 >
-                  <option value="branded">Branded</option>
-                  <option value="unbranded">Unbranded</option>
+                  {categories.length === 0 && <option value="uncategorized">Uncategorized</option>}
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
+            </div>
+
+            {/* Size + Pcs Per Carton */}
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Size</label>
                 <input
-                  type="number"
-                  name="quantity"
-                  value={form.quantity}
+                  type="text"
+                  name="size"
+                  value={form.size}
                   onChange={handleChange}
-                  placeholder="0"
-                  min="0"
+                  placeholder="e.g. Large, 42mm"
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                 />
               </div>
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Pcs / Carton</label>
+                <input
+                  type="text"
+                  name="pcsPerCarton"
+                  value={form.pcsPerCarton}
+                  onChange={handleChange}
+                  placeholder="e.g. 50 pcs"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Available Quantity */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Available Quantity</label>
+              <input
+                type="number"
+                name="availableQuantity"
+                value={form.availableQuantity}
+                onChange={handleChange}
+                placeholder="Total items in stock"
+                min="0"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              />
             </div>
 
             {/* Description */}

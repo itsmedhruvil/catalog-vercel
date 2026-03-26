@@ -33,12 +33,14 @@ async function connectDB() {
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const productSchema = new mongoose.Schema(
   {
-    name:        { type: String, required: true, trim: true },
-    price:       { type: String, default: '' },
-    category:    { type: String, enum: ['branded', 'unbranded'], default: 'unbranded' },
-    description: { type: String, default: '' },
-    images:      { type: [String], default: [] },
-    quantity:    { type: Number, default: 0, min: 0 },
+    name:            { type: String, required: true, trim: true },
+    price:           { type: String, default: '' },
+    category:        { type: String, enum: ['branded', 'unbranded'], default: 'unbranded' },
+    description:     { type: String, default: '' },
+    images:          { type: [String], default: [] },
+    availableQuantity: { type: String, default: '' },
+    size:            { type: String, default: '' },
+    pcsPerCarton:    { type: String, default: '' },
   },
   {
     timestamps: true,

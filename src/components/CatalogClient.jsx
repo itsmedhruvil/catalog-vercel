@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Plus, Edit2, Share2, X, Check, Image as ImageIcon,
   ChevronLeft, ChevronRight, CheckCircle2, Link as LinkIcon,
-  Loader2, Lock, Unlock
+  Loader2, Lock, Unlock, AlertCircle, Package, Box, Layers, Settings,
+  ZoomIn, ZoomOut, Maximize2, Trash2
 } from 'lucide-react'
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '@/lib/api'
 import ProductFormModal from './ProductFormModal'
 import LightboxModal from './LightboxModal'
 import ShareOptionsModal from './ShareOptionsModal'
 import AdminLoginModal from './AdminLoginModal'
+import ManageCategoriesModal from './ManageCategoriesModal'
 
 export default function CatalogClient({ initialSharedIds = [], initialFilter = 'all' }) {
   const [products, setProducts] = useState([])
@@ -27,6 +29,7 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [toast, setToast] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [categories, setCategories] = useState(['branded', 'unbranded'])
 
   const isSharedView = sharedIds.length > 0
 
@@ -121,9 +124,13 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       <header className="sticky top-0 z-20 bg-white shadow-sm px-3 sm:px-4 py-3 flex items-center justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">
-            {isSharedView ? 'Curated Collection' : 'My Catalog'}
+            {isSharedView ? 'Curated Collection' : 'Ready Stock'}
           </h1>
-          {!isSharedView && <p className="text-xs text-gray-500 hidden sm:block">Manage & Share Products</p>}
+          {!isSharedView && (
+            <p className="text-xs text-gray-500 hidden sm:block">
+              {isAdmin ? 'Admin Mode (Editing Enabled)' : 'Viewer Mode (Read-Only)'}
+            </p>
+          )}
         </div>
 
         {!isSharedView && (
@@ -190,20 +197,29 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
 
       {/* ── FILTERS ── */}
       {!isSharedView && (
-        <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar">
-          {['all', 'branded', 'unbranded'].map(f => (
+        <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
+          {['all', ...categories].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${
-                filter === f
-                  ? 'bg-gray-900 text-white'
+                filter === f 
+                  ? 'bg-gray-900 text-white' 
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
               {f}
             </button>
           ))}
+          
+          {isAdmin && (
+            <button 
+              onClick={() => setActiveModal('categories')}
+              className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
+            >
+              <Settings size={14} /> Manage
+            </button>
+          )}
         </div>
       )}
 
@@ -282,9 +298,18 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       {(activeModal === 'add' || activeModal === 'edit') && (
         <ProductFormModal
           product={activeModal === 'edit' ? currentProduct : null}
+          categories={categories}
           onClose={() => setActiveModal(null)}
           onSave={handleSave}
           onDelete={activeModal === 'edit' ? handleDelete : null}
+        />
+      )}
+
+      {activeModal === 'categories' && isAdmin && (
+        <ManageCategoriesModal
+          categories={categories}
+          setCategories={setCategories}
+          onClose={() => setActiveModal(null)}
         />
       )}
 
@@ -309,6 +334,8 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
 
 function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdit, hideControls, isAdmin }) {
+  const isSoldOut = product.availableQuantity != null && product.availableQuantity !== '' && Number(product.availableQuantity) <= 0
+
   return (
     <div className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
       isSelected ? 'ring-2 ring-blue-500 border-transparent' : 'border-gray-100'
@@ -352,8 +379,10 @@ function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdi
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-gray-900 truncate">{product.name}</h3>
             {product.price && <p className="text-sm text-gray-500 mt-0.5">{product.price}</p>}
-            {product.quantity !== undefined && (
-              <p className="text-xs text-gray-400 mt-0.5">Qty: {product.quantity}</p>
+            {(product.availableQuantity != null && product.availableQuantity !== '') && (
+              <p className={`text-xs mt-0.5 ${isSoldOut ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
+                {isSoldOut ? 'Sold Out' : `Qty: ${product.availableQuantity}`}
+              </p>
             )}
           </div>
           {!hideControls && !isSelectionMode && isAdmin && (
