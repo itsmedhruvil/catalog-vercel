@@ -221,6 +221,16 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
               />
             </div>
 
+            {/* Price Display in Modal */}
+            {form.price && (
+              <div className="pt-2">
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">Price</p>
+                  <p className="text-lg font-bold text-gray-900">{form.price}</p>
+                </div>
+              </div>
+            )}
+
             {/* Delete */}
             {isEdit && onDelete && (
               <div className="pt-2">

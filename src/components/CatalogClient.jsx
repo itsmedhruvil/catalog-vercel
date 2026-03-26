@@ -258,6 +258,11 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
                   setCurrentProduct(product)
                   setActiveModal('edit')
                 }}
+                onInquire={() => {
+                  const message = `Hello I have inquiry for this ${product.name}`
+                  const whatsappUrl = `https://wa.me/919712528819?text=${encodeURIComponent(message)}`
+                  window.open(whatsappUrl, '_blank')
+                }}
                 hideControls={isSharedView}
                 isAdmin={isAdmin}
               />
@@ -337,7 +342,7 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
 
-function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdit, hideControls, isAdmin }) {
+function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdit, onInquire, hideControls, isAdmin }) {
   const isSoldOut = product.availableQuantity != null && product.availableQuantity !== '' && Number(product.availableQuantity) <= 0
 
   return (
@@ -399,6 +404,15 @@ function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdi
             </button>
           )}
         </div>
+        
+        {!hideControls && !isSelectionMode && (
+          <button
+            onClick={e => { e.stopPropagation(); onInquire() }}
+            className="w-full mt-2 bg-green-600 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Inquire Now
+          </button>
+        )}
       </div>
     </div>
   )
