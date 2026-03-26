@@ -88,10 +88,14 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
   }
 
   const handleDelete = async (id) => {
-    await deleteProduct(id)
-    setProducts(prev => prev.filter(p => p.id !== id))
-    setActiveModal(null)
-    showToast('Product deleted')
+    try {
+      await deleteProduct(id)
+      setProducts(prev => prev.filter(p => p.id !== id))
+      setActiveModal(null)
+      showToast('Product deleted')
+    } catch (error) {
+      showToast('Failed to delete product')
+    }
   }
 
   const toggleSelect = (id) => {

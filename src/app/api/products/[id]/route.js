@@ -29,7 +29,8 @@ export async function PUT(request, { params }) {
 // DELETE /api/products/:id
 export async function DELETE(request, { params }) {
   try {
-    const deleted = await deleteProductById(params.id)
+    const { id } = await params
+    const deleted = await deleteProductById(id)
     if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (err) {
