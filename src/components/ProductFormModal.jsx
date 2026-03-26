@@ -57,7 +57,7 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
 
   return (
     <div className="fixed inset-0 z-50 bg-white md:bg-gray-900/50 flex flex-col md:items-center md:justify-center">
-      <div className="flex-1 w-full bg-white md:max-w-md md:flex-none md:max-h-[90vh] md:rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-slide-up md:animate-zoom-in">
+      <div className="flex-1 w-full bg-white md:max-w-2xl md:flex-none md:max-h-[90vh] md:rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-slide-up md:animate-zoom-in">
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
@@ -143,14 +143,17 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Price</label>
-                <input
-                  type="text"
-                  name="price"
-                  value={form.price}
-                  onChange={handleChange}
-                  placeholder="e.g. ₹500"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">₹</span>
+                  <input
+                    type="text"
+                    name="price"
+                    value={form.price}
+                    onChange={handleChange}
+                    placeholder="e.g. 500"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 pl-8 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                  />
+                </div>
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>

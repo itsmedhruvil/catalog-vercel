@@ -1,7 +1,5 @@
-'use client'
-
 import { useState } from 'react'
-import { Lock, X } from 'lucide-react'
+import { Lock, Unlock } from 'lucide-react'
 
 export default function AdminLoginModal({ onClose, onSuccess }) {
   const [password, setPassword] = useState('')
@@ -19,7 +17,7 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-zoom-in">
+      <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl animate-zoom-in">
         <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mb-4 mx-auto">
           <Lock size={24} />
         </div>

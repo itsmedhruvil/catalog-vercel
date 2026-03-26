@@ -1,138 +1,214 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import Link from "next/link";
 import {
-  Plus, Edit2, Share2, X, Check, Image as ImageIcon,
-  ChevronLeft, ChevronRight, CheckCircle2, Link as LinkIcon,
-  Loader2, Lock, Unlock, AlertCircle, Package, Box, Layers, Settings,
-  ZoomIn, ZoomOut, Maximize2, Trash2
-} from 'lucide-react'
-import { fetchProducts, createProduct, updateProduct, deleteProduct } from '@/lib/api'
-import ProductFormModal from './ProductFormModal'
-import LightboxModal from './LightboxModal'
-import ShareOptionsModal from './ShareOptionsModal'
-import AdminLoginModal from './AdminLoginModal'
-import ManageCategoriesModal from './ManageCategoriesModal'
+  Plus,
+  Edit2,
+  Share2,
+  X,
+  Check,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  Link as LinkIcon,
+  Loader2,
+  Lock,
+  Unlock,
+  AlertCircle,
+  Package,
+  Box,
+  Layers,
+  Settings,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Trash2,
+} from "lucide-react";
+import {
+  fetchProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/lib/api";
+import ProductFormModal from "./ProductFormModal";
+import ProductDetailsModal from "./ProductDetailsModal";
+import ImageZoomModal from "./ImageZoomModal";
+import ShareOptionsModal from "./ShareOptionsModal";
+import AdminLoginModal from "./AdminLoginModal";
+import ManageCategoriesModal from "./ManageCategoriesModal";
+import LightboxModal from "./LightboxModal";
 
-export default function CatalogClient({ initialSharedIds = [], initialFilter = 'all' }) {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
+export default function CatalogClient({
+  initialSharedIds = [],
+  initialFilter = "all",
+}) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(
-    ['all', 'branded', 'unbranded'].includes(initialFilter) ? initialFilter : 'all'
-  )
-  const [sharedIds] = useState(initialSharedIds)
+    ["all", "branded", "unbranded"].includes(initialFilter)
+      ? initialFilter
+      : "all",
+  );
+  const [sharedIds] = useState(initialSharedIds);
 
-  const [isSelectionMode, setIsSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState(new Set())
-  const [activeModal, setActiveModal] = useState(null)
-  const [currentProduct, setCurrentProduct] = useState(null)
-  const [lightboxIndex, setLightboxIndex] = useState(0)
-  const [toast, setToast] = useState('')
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [categories, setCategories] = useState(['branded', 'unbranded'])
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [activeModal, setActiveModal] = useState(null);
+  const [currentProduct, setCurrentProduct] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [toast, setToast] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [categories, setCategories] = useState(["branded", "unbranded"]);
 
-  const isSharedView = sharedIds.length > 0
+  const isSharedView = sharedIds.length > 0;
 
   // ── Load products ────────────────────────────────────────────────────────
   const loadProducts = useCallback(async () => {
     try {
-      setLoading(true)
-      const data = await fetchProducts()
-      setProducts(data)
+      setLoading(true);
+      const data = await fetchProducts();
+      setProducts(data);
     } catch {
-      showToast('Failed to load products')
+      showToast("Failed to load products");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
-  useEffect(() => { loadProducts() }, [loadProducts])
+  // ── Initialize products on mount ─────────────────────────────────────────
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  // ── Reset loading state on navigation ────────────────────────────────────
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setLoading(true);
+    };
+    
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, []);
+
+  // ── Initialize admin mode from localStorage ───────────────────────────────
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedAdminMode = localStorage.getItem("adminMode");
+      if (savedAdminMode === "true") {
+        setIsAdmin(true);
+      }
+    }
+  }, []);
+
+  // ── Save admin mode to localStorage ───────────────────────────────────────
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("adminMode", isAdmin.toString());
+    }
+  }, [isAdmin]);
 
   // ── Derived list ─────────────────────────────────────────────────────────
   const displayed = useMemo(() => {
-    if (sharedIds.length > 0) return products.filter(p => sharedIds.includes(p.id))
-    if (filter !== 'all') return products.filter(p => p.category === filter)
-    return products
-  }, [products, filter, sharedIds])
+    if (sharedIds.length > 0)
+      return products.filter((p) => sharedIds.includes(p.id));
+    if (filter !== "all") return products.filter((p) => p.category === filter);
+    return products;
+  }, [products, filter, sharedIds]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = (msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
-  }
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  };
 
   const copyLink = (url) => {
     navigator.clipboard?.writeText(url).catch(() => {
-      const el = document.createElement('textarea')
-      el.value = url
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-    })
-    showToast('Link copied!')
-  }
+      const el = document.createElement("textarea");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    });
+    showToast("Link copied!");
+  };
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSave = async (data) => {
-    if (activeModal === 'add') {
-      const created = await createProduct(data)
-      setProducts(prev => [created, ...prev])
-      showToast('Product added')
+    if (activeModal === "add") {
+      const created = await createProduct(data);
+      setProducts((prev) => [created, ...prev]);
+      showToast("Product added");
     } else {
-      const updated = await updateProduct(data.id, data)
-      setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))
-      showToast('Product updated')
+      const updated = await updateProduct(data.id, data);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === updated.id ? updated : p)),
+      );
+      showToast("Product updated");
     }
-    setActiveModal(null)
-  }
+    setActiveModal(null);
+  };
 
   const handleDelete = async (id) => {
     try {
-      await deleteProduct(id)
-      setProducts(prev => prev.filter(p => p.id !== id))
-      setActiveModal(null)
-      showToast('Product deleted')
+      await deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setActiveModal(null);
+      showToast("Product deleted");
     } catch (error) {
-      showToast('Failed to delete product')
+      showToast("Failed to delete product");
     }
-  }
+  };
 
   const toggleSelect = (id) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const shareSelected = () => {
-    const base = window.location.origin + '/catalog'
-    copyLink(`${base}?shared=${[...selectedIds].join(',')}`)
-    setIsSelectionMode(false)
-    setSelectedIds(new Set())
-  }
+    const base = window.location.origin + "/catalog";
+    copyLink(`${base}?shared=${[...selectedIds].join(",")}`);
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  };
 
   const shareCategoryLink = (cat) => {
-    copyLink(`${window.location.origin}/catalog?filter=${cat}`)
-  }
+    copyLink(`${window.location.origin}/catalog?filter=${cat}`);
+  };
 
   const shareAllLink = () => {
-    copyLink(`${window.location.origin}/catalog`)
-  }
+    copyLink(`${window.location.origin}/catalog`);
+  };
+
+  const toggleSelection = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-20 bg-white shadow-sm px-3 sm:px-4 py-3 flex items-center justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">
-            {isSharedView ? 'Curated Collection' : 'Ready Stock'}
+            {isSharedView ? "Curated Collection" : "Ready Stock"}
           </h1>
           {!isSharedView && (
             <p className="text-xs text-gray-500 hidden sm:block">
-              {isAdmin ? 'Admin Mode (Editing Enabled)' : 'Viewer Mode (Read-Only)'}
+              {isAdmin
+                ? "Admin Mode (Editing Enabled)"
+                : "Viewer Mode (Read-Only)"}
             </p>
           )}
         </div>
@@ -140,29 +216,36 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
         {!isSharedView && (
           <div className="flex gap-1.5 sm:gap-2 items-center shrink-0 ml-2">
             {/* Admin Toggle Button */}
-            <button 
+            <button
               onClick={() => {
                 if (isAdmin) {
-                  setIsAdmin(false)
-                  showToast('Admin mode disabled')
+                  setIsAdmin(false);
+                  showToast("Admin mode disabled");
                 } else {
-                  setActiveModal('adminLogin')
+                  setActiveModal("adminLogin");
                 }
               }}
               className={`p-1.5 sm:p-2 rounded-full transition-colors ${
-                isAdmin 
-                  ? 'bg-green-100 text-green-600 border border-green-200' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                isAdmin
+                  ? "bg-green-100 text-green-600 border border-green-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
               title={isAdmin ? "Lock Admin" : "Unlock Admin"}
             >
-              {isAdmin ? <Unlock size={18} className="sm:size-5" /> : <Lock size={18} className="sm:size-5" />}
+              {isAdmin ? (
+                <Unlock size={18} className="sm:size-5" />
+              ) : (
+                <Lock size={18} className="sm:size-5" />
+              )}
             </button>
 
             {isSelectionMode ? (
               <>
                 <button
-                  onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()) }}
+                  onClick={() => {
+                    setIsSelectionMode(false);
+                    setSelectedIds(new Set());
+                  }}
                   className="p-1.5 sm:p-2 bg-gray-100 text-gray-600 rounded-full"
                 >
                   <X size={18} className="sm:size-5" />
@@ -173,14 +256,15 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
                     className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-full text-xs sm:text-sm font-semibold"
                   >
                     <Share2 size={14} className="sm:size-4" />
-                    <span className="hidden sm:inline">Share </span>({selectedIds.size})
+                    <span className="hidden sm:inline">Share </span>(
+                    {selectedIds.size})
                   </button>
                 )}
               </>
             ) : (
               <>
                 <button
-                  onClick={() => setActiveModal('shareOptions')}
+                  onClick={() => setActiveModal("shareOptions")}
                   className="p-1.5 sm:p-2 text-gray-600 hover:bg-gray-100 rounded-full"
                   title="Share options"
                 >
@@ -202,23 +286,23 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       {/* ── FILTERS ── */}
       {!isSharedView && (
         <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
-          {['all', ...categories].map((f) => (
+          {["all", ...categories].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${
-                filter === f 
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                filter === f
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
               {f}
             </button>
           ))}
-          
+
           {isAdmin && (
-            <button 
-              onClick={() => setActiveModal('categories')}
+            <button
+              onClick={() => setActiveModal("categories")}
               className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
             >
               <Settings size={14} /> Manage
@@ -238,30 +322,36 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
           <div className="text-center py-24 text-gray-400">
             <ImageIcon className="mx-auto mb-4 opacity-20" size={64} />
             <p className="font-medium">No products yet</p>
-            {!isSharedView && <p className="text-sm mt-1">Tap + to add your first item</p>}
+            {!isSharedView && (
+              <p className="text-sm mt-1">Tap + to add your first item</p>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {displayed.map(product => (
+            {displayed.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedIds.has(product.id)}
                 onImageClick={() => {
-                  if (isSelectionMode) { toggleSelect(product.id); return }
-                  setCurrentProduct(product)
-                  setLightboxIndex(0)
-                  setActiveModal('lightbox')
+                  if (isSelectionMode) {
+                    toggleSelection(product.id);
+                    return;
+                  }
+                  // Navigate to product page
+                  window.location.href = `/product/${product.id}`;
                 }}
                 onEdit={() => {
-                  setCurrentProduct(product)
-                  setActiveModal('edit')
+                  if (isAdmin) {
+                    setCurrentProduct(product);
+                    setActiveModal("edit");
+                  }
                 }}
                 onInquire={() => {
-                  const message = `Hello I have inquiry for this ${product.name}`
-                  const whatsappUrl = `https://wa.me/919712528819?text=${encodeURIComponent(message)}`
-                  window.open(whatsappUrl, '_blank')
+                  const message = `Hello I have inquiry for this ${product.name}`;
+                  const whatsappUrl = `https://wa.me/919712528819?text=${encodeURIComponent(message)}`;
+                  window.open(whatsappUrl, "_blank");
                 }}
                 hideControls={isSharedView}
                 isAdmin={isAdmin}
@@ -274,7 +364,10 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       {/* ── FAB ── */}
       {!isSharedView && !isSelectionMode && isAdmin && (
         <button
-          onClick={() => { setCurrentProduct(null); setActiveModal('add') }}
+          onClick={() => {
+            setCurrentProduct(null);
+            setActiveModal("add");
+          }}
           className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-transform z-20"
           aria-label="Add product"
         >
@@ -283,38 +376,40 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
       )}
 
       {/* ── MODALS ── */}
-      {activeModal === 'adminLogin' && (
+      {activeModal === "adminLogin" && (
         <AdminLoginModal
           onClose={() => setActiveModal(null)}
           onSuccess={() => {
-            setIsAdmin(true)
-            setActiveModal(null)
-            showToast('Admin mode enabled')
+            setIsAdmin(true);
+            setActiveModal(null);
+            showToast("Admin mode enabled");
           }}
         />
       )}
 
-      {activeModal === 'shareOptions' && (
+      {activeModal === "shareOptions" && (
         <ShareOptionsModal
+          categories={categories}
           onClose={() => setActiveModal(null)}
-          onShareAll={() => { shareAllLink(); setActiveModal(null) }}
-          onShareBranded={() => { shareCategoryLink('branded'); setActiveModal(null) }}
-          onShareUnbranded={() => { shareCategoryLink('unbranded'); setActiveModal(null) }}
-          onCustomSelect={() => { setActiveModal(null); setIsSelectionMode(true) }}
+          onCopyCategory={shareCategoryLink}
+          onCustomSelect={() => {
+            setActiveModal(null);
+            setIsSelectionMode(true);
+          }}
         />
       )}
 
-      {(activeModal === 'add' || activeModal === 'edit') && (
+      {(activeModal === "add" || activeModal === "edit") && (
         <ProductFormModal
-          product={activeModal === 'edit' ? currentProduct : null}
+          product={activeModal === "edit" ? currentProduct : null}
           categories={categories}
           onClose={() => setActiveModal(null)}
           onSave={handleSave}
-          onDelete={activeModal === 'edit' ? handleDelete : null}
+          onDelete={activeModal === "edit" ? handleDelete : null}
         />
       )}
 
-      {activeModal === 'categories' && isAdmin && (
+      {activeModal === "categories" && isAdmin && (
         <ManageCategoriesModal
           categories={categories}
           setCategories={setCategories}
@@ -322,7 +417,24 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
         />
       )}
 
-      {activeModal === 'lightbox' && currentProduct && (
+      {activeModal === "details" && currentProduct && (
+        <ProductDetailsModal
+          product={currentProduct}
+          currentIndex={lightboxIndex}
+          setCurrentIndex={setLightboxIndex}
+          onClose={() => setActiveModal(null)}
+          onOpenZoom={() => setActiveModal("zoom")}
+        />
+      )}
+
+      {activeModal === "zoom" && currentProduct && currentProduct.images && (
+        <ImageZoomModal
+          imageSrc={currentProduct.images[lightboxIndex]}
+          onClose={() => setActiveModal("details")}
+        />
+      )}
+
+      {activeModal === "lightbox" && currentProduct && (
         <LightboxModal
           product={currentProduct}
           initialIndex={lightboxIndex}
@@ -337,29 +449,45 @@ export default function CatalogClient({ initialSharedIds = [], initialFilter = '
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
 
-function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdit, onInquire, hideControls, isAdmin }) {
-  const isSoldOut = product.availableQuantity != null && product.availableQuantity !== '' && Number(product.availableQuantity) <= 0
+function ProductCard({
+  product,
+  isSelectionMode,
+  isSelected,
+  onImageClick,
+  onEdit,
+  onInquire,
+  hideControls,
+  isAdmin,
+}) {
+  const isSoldOut =
+    product.availableQuantity != null &&
+    product.availableQuantity !== "" &&
+    Number(product.availableQuantity) <= 0;
 
   return (
-    <div className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
-      isSelected ? 'ring-2 ring-blue-500 border-transparent' : 'border-gray-100'
-    }`}>
+    <div
+      className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
+        isSelected
+          ? "ring-2 ring-blue-500 border-transparent"
+          : "border-gray-100"
+      }`}
+    >
       <div
         className="relative aspect-square bg-gray-100 cursor-pointer overflow-hidden group"
         onClick={onImageClick}
       >
-        {product.images?.[0] ? (
-          <img
-            src={product.images[0]}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
+          {product.images?.[0] ? (
+            <img
+              src={product.images[0]}
+              alt={product.name}
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
         ) : (
           <div className="flex items-center justify-center w-full h-full text-gray-300">
             <ImageIcon size={48} />
@@ -374,40 +502,60 @@ function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdi
 
         {isSelectionMode && (
           <div className="absolute inset-0 bg-black/10 flex items-start justify-start p-2">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${
-              isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'bg-white border-gray-300 text-transparent'
-            }`}>
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${
+                isSelected
+                  ? "bg-blue-500 border-blue-500 text-white"
+                  : "bg-white border-gray-300 text-transparent"
+              }`}
+            >
               <Check size={14} strokeWidth={3} />
             </div>
           </div>
         )}
       </div>
 
-      <div className="p-3">
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-gray-900 truncate">{product.name}</h3>
-            {product.price && <p className="text-sm text-gray-500 mt-0.5">{product.price}</p>}
-            {(product.availableQuantity != null && product.availableQuantity !== '') && (
-              <p className={`text-xs mt-0.5 ${isSoldOut ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
-                {isSoldOut ? 'Sold Out' : `Qty: ${product.availableQuantity}`}
-              </p>
-            )}
-          </div>
+      <div className="p-3 flex flex-col flex-1">
+        <div className="flex justify-between items-start gap-2 mb-1">
+          <h3 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight flex-1">
+            {product.name}
+          </h3>
           {!hideControls && !isSelectionMode && isAdmin && (
             <button
-              onClick={e => { e.stopPropagation(); onEdit() }}
-              className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg shrink-0 -mt-1 -mr-1"
               aria-label="Edit product"
             >
               <Edit2 size={16} />
             </button>
           )}
         </div>
-        
+
+        <div className="mt-auto flex items-center justify-between">
+          {product.price && (
+            <p className="text-sm font-semibold text-blue-600">
+              ₹{product.price}
+            </p>
+          )}
+          {product.availableQuantity != null &&
+            product.availableQuantity !== "" && (
+              <p
+                className={`text-xs ${isSoldOut ? "text-red-600 font-semibold" : "text-gray-400"}`}
+              >
+                {isSoldOut ? "Sold Out" : `Qty: ${product.availableQuantity}`}
+              </p>
+            )}
+        </div>
+
         {!hideControls && !isSelectionMode && (
           <button
-            onClick={e => { e.stopPropagation(); onInquire() }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onInquire();
+            }}
             className="w-full mt-2 bg-green-600 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-green-700 transition-colors"
           >
             Inquire Now
@@ -415,5 +563,5 @@ function ProductCard({ product, isSelectionMode, isSelected, onImageClick, onEdi
         )}
       </div>
     </div>
-  )
+  );
 }
