@@ -29,7 +29,7 @@ export default function InquiryButton({ productName }) {
           className="group inline-flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
         >
           <MessageCircle size={20} className="group-hover:scale-110 transition-transform" />
-          <span className="text-lg">Send WhatsApp Inquiry</span>
+          <span className="sm:text-sm md:text-md lg:text-lg">Send WhatsApp Inquiry</span>
         </button>
 
         <div className="mt-4 text-xs text-gray-500">

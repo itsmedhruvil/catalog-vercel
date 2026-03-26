@@ -20,7 +20,7 @@ export default function ProductDetails({ product }) {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="text-right">
+            <div className="text-left">
               <p className="text-xs sm:text-sm md:text-base text-gray-500 font-medium">Price</p>
               <p className="text-2xl sm:text-3xl font-bold text-blue-600">₹{product.price}</p>
             </div>

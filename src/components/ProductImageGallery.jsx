@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-export default function ProductImageGallery({ images, productName, imageFit = "cover" }) {
+export default function ProductImageGallery({ images, productName, imageFit = "cover", onImageClick }) {
   const [mainImageIndex, setMainImageIndex] = useState(0)
+  const [isMagnifying, setIsMagnifying] = useState(false)
+  const [magnifierPosition, setMagnifierPosition] = useState({ x: 0, y: 0 })
 
   const nextImage = () => {
     if (images.length > 1) {
@@ -22,10 +24,34 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
     setMainImageIndex(index)
   }
 
-  const openWhatsApp = () => {
-    const message = `Hello I have inquiry for this ${productName}`
-    const whatsappUrl = `https://wa.me/919712528819?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+  const openImagePopup = () => {
+    if (onImageClick) {
+      onImageClick(mainImageIndex)
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (window.innerWidth >= 1024) { // Only on desktop
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      setMagnifierPosition({ x, y })
+    }
+  }
+
+  const handleMouseEnter = () => {
+    if (window.innerWidth >= 1024) { // Only on desktop
+      setIsMagnifying(true)
+    } else {
+      // On mobile/tablet, open popup on tap
+      openImagePopup()
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (window.innerWidth >= 1024) { // Only on desktop
+      setIsMagnifying(false)
+    }
   }
 
   return (
@@ -33,13 +59,24 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
       {/* Main Image Section */}
       <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
         {/* Main Image */}
-        <div className="aspect-square bg-gray-100 relative group cursor-pointer">
+        <div 
+          className="aspect-square bg-gray-100 relative group cursor-pointer"
+          onMouseMove={handleMouseMove}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={openImagePopup}
+        >
           {images[mainImageIndex] ? (
             <img
               src={images[mainImageIndex]}
               alt={`${productName} - Image ${mainImageIndex + 1}`}
-              className={`w-full h-full object-${imageFit}`}
+              className={`w-full h-full object-${imageFit} transition-transform duration-300 ease-out`}
               loading="lazy"
+              style={{
+                transform: isMagnifying && window.innerWidth >= 1024 ? 'scale(1.5)' : 'scale(1)',
+                transformOrigin: `${magnifierPosition.x}px ${magnifierPosition.y}px`,
+                transition: 'transform 0.3s ease-out'
+              }}
             />
           ) : (
             <div className="flex items-center justify-center w-full h-full text-gray-300">
@@ -66,14 +103,6 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
               </button>
             </>
           )}
-
-          {/* Zoom Button */}
-          <button
-            onClick={() => window.open(images[mainImageIndex], '_blank')}
-            className="absolute bottom-4 right-4 p-3 bg-white/80 text-gray-600 rounded-full shadow-lg backdrop-blur-sm hover:bg-white transition-all transform hover:scale-105"
-          >
-            <ZoomIn size={24} />
-          </button>
 
           {/* Image Counter */}
           {images.length > 1 && (
@@ -110,16 +139,6 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
           ))}
         </div>
       )}
-
-      {/* Mobile Inquiry Button */}
-      <div className="lg:hidden">
-        <button
-          onClick={openWhatsApp}
-          className="w-full py-4 bg-green-600 text-white font-semibold rounded-xl shadow-lg hover:bg-green-700 transition-colors"
-        >
-          Inquire Now
-        </button>
-      </div>
     </div>
   )
 }
