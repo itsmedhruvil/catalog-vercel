@@ -407,8 +407,15 @@ export default function OrdersPage() {
                           <Eye size={16} />
                         </button>
                         <button 
-                          onClick={() => router.push(`/orders/${order.id}/edit`)}
+                          onClick={() => router.push(`/orders/${order.id}/receipt`)}
                           className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                          title="View Receipt"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          onClick={() => router.push(`/orders/${order.id}`)}
+                          className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
                           title="Edit Order"
                         >
                           <Edit2 size={16} />
