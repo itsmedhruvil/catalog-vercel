@@ -248,7 +248,9 @@ export default function CreateOrderPage() {
       // Create order
       const order = await createOrder(orderData);
       alert('Order created successfully!');
-      router.push(`/orders/${order.id}`);
+      
+      // Use window.location.href for immediate navigation to avoid routing issues
+      window.location.href = `/orders/${order.id}`;
     } catch (error) {
       console.error('Error creating order:', error);
       alert('Failed to create order. Please try again.');
