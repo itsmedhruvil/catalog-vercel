@@ -93,7 +93,7 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
               <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
                 {form.images.map((img, idx) => (
                   <div key={idx} className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden border border-gray-200">
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={img} alt="" className="w-full h-full object-contain" />
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}

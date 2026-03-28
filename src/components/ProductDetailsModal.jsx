@@ -41,7 +41,7 @@ export default function ProductDetailsModal({
               <img 
                 src={images[currentIndex]} 
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
               
               {/* Maximize Hint overlay */}

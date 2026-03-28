@@ -9,7 +9,7 @@ import {
   Share2,
   X,
   Check,
-  Image,
+  Image as ImageIcon,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -26,6 +26,10 @@ import {
   ZoomOut,
   Maximize2,
   Trash2,
+  Truck,
+  Search,
+  User,
+  ShoppingCart,
 } from "lucide-react";
 import {
   fetchProducts,
@@ -34,9 +38,8 @@ import {
   deleteProduct,
 } from "@/lib/api";
 import ProductFormModal from "./ProductFormModal";
-import ProductDetailsModal from "./ProductDetailsModal";
-import ImageZoomModal from "./ImageZoomModal";
 import ShareOptionsModal from "./ShareOptionsModal";
+import ShareConfigModal from "./ShareConfigModal";
 import AdminLoginModal from "./AdminLoginModal";
 import ManageCategoriesModal from "./ManageCategoriesModal";
 import LightboxModal from "./LightboxModal";
@@ -45,169 +48,325 @@ export default function CatalogClient({
   initialSharedIds = [],
   initialFilter = "all",
 }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(
-    ["all", "branded", "unbranded"].includes(initialFilter)
-      ? initialFilter
-      : "all",
-  );
-  const [sharedIds] = useState(initialSharedIds);
+  // --- LOADERS (Normalizing old data structure if needed) ---
+  const loadProducts = () => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("catalog_products");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Normalize any old data to the new 'holds' array format
+        return parsed.map((p) => {
+          let migratedHolds = p.holds || [];
+          if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
+            migratedHolds = [
+              {
+                id: "legacy-hold",
+                customer: "Legacy Hold",
+                quantity: p.stockOnHold,
+              },
+            ];
+          }
+          return {
+            ...p,
+            totalQuantity:
+              p.totalQuantity !== undefined
+                ? p.totalQuantity
+                : p.availableQuantity || "",
+            holds: migratedHolds,
+            stockOnHold: undefined,
+            availableQuantity: undefined,
+          };
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load products", e);
+    }
+    return [];
+  };
 
+  const loadCategories = () => {
+    if (typeof window === "undefined") return ["branded", "unbranded"];
+    try {
+      const saved = localStorage.getItem("catalog_categories");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load categories", e);
+    }
+    return ["branded", "unbranded"];
+  };
+
+  // --- STATE ---
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(["branded", "unbranded"]);
+  const [filter, setFilter] = useState(initialFilter);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sharedIds, setSharedIds] = useState(initialSharedIds);
+
+  // URL configurations
+  const [showTotal, setShowTotal] = useState(false);
+  const [showStock, setShowStock] = useState(false);
+  const [hidePrice, setHidePrice] = useState(false);
+
+  // UI & Auth State
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedProductIds, setSelectedProductIds] = useState(new Set());
+
+  // Modals
   const [activeModal, setActiveModal] = useState(null);
   const [currentProduct, setCurrentProduct] = useState(null);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [toast, setToast] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [categories, setCategories] = useState(["branded", "unbranded"]);
+  const [toastMessage, setToastMessage] = useState("");
 
-  const router = useRouter();
-  const isSharedView = sharedIds.length > 0;
+  // Admins always override the 'hide price' setting
+  const effectiveHidePrice = hidePrice && !isAdmin;
 
-  // ── Load products ────────────────────────────────────────────────────────
-  const loadProducts = useCallback(async () => {
+  // --- LOAD PRODUCTS FROM DATABASE ---
+  const loadProductsFromDB = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await fetchProducts();
-      setProducts(data);
-    } catch {
-      showToast("Failed to load products");
-    } finally {
-      setLoading(false);
+      // Normalize any old data to the new 'holds' array format
+      const normalizedData = data.map((p) => {
+        let migratedHolds = p.holds || [];
+        if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
+          migratedHolds = [
+            {
+              id: "legacy-hold",
+              customer: "Legacy Hold",
+              quantity: p.stockOnHold,
+            },
+          ];
+        }
+        return {
+          ...p,
+          totalQuantity:
+            p.totalQuantity !== undefined
+              ? p.totalQuantity
+              : p.availableQuantity || "",
+          holds: migratedHolds,
+          stockOnHold: undefined,
+          availableQuantity: undefined,
+        };
+      });
+      setProducts(normalizedData);
+    } catch (error) {
+      console.error("Failed to load products from database", error);
+      // Fallback to localStorage
+      const fallbackProducts = loadProducts();
+      setProducts(fallbackProducts);
     }
   }, []);
 
-  // ── Initialize products on mount ─────────────────────────────────────────
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
-
-  // ── Reset loading state on navigation ────────────────────────────────────
-  useEffect(() => {
-    const handleRouteChange = () => {
-      setLoading(true);
-    };
-    
-    window.addEventListener('popstate', handleRouteChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, []);
-
-  // ── Initialize admin mode from localStorage ───────────────────────────────
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedAdminMode = localStorage.getItem("adminMode");
-      if (savedAdminMode === "true") {
-        setIsAdmin(true);
+  // --- LOAD CATEGORIES FROM DATABASE ---
+  const loadCategoriesFromDB = useCallback(async () => {
+    try {
+      // Try to load from database first, but for now we'll use localStorage
+      // In a real implementation, you might have a separate API for categories
+      const saved = localStorage.getItem("catalog_categories");
+      if (saved) {
+        setCategories(JSON.parse(saved));
       }
+    } catch (error) {
+      console.error("Failed to load categories", error);
     }
   }, []);
 
-  // ── Save admin mode to localStorage ───────────────────────────────────────
+  // --- PERSISTENCE ---
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("adminMode", isAdmin.toString());
+    try {
+      localStorage.setItem("catalog_products", JSON.stringify(products));
+    } catch (e) {
+      console.error("Storage full or unavailable", e);
     }
-  }, [isAdmin]);
+  }, [products]);
 
-  // ── Derived list ─────────────────────────────────────────────────────────
-  const displayed = useMemo(() => {
-    if (sharedIds.length > 0)
-      return products.filter((p) => sharedIds.includes(p.id));
-    if (filter !== "all") return products.filter((p) => p.category === filter);
-    return products;
-  }, [products, filter, sharedIds]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("catalog_categories", JSON.stringify(categories));
+    } catch (e) {
+      console.error("Failed to save categories", e);
+    }
+  }, [categories]);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
-  };
+  // --- INITIALIZATION (URL PARSING) ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedParam = params.get("shared");
+    const filterParam = params.get("filter");
+    const totalParam = params.get("total");
+    const stockParam = params.get("stock");
+    const hidePriceParam = params.get("hidePrice");
 
-  const copyLink = (url) => {
-    navigator.clipboard?.writeText(url).catch(() => {
-      const el = document.createElement("textarea");
-      el.value = url;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    });
-    showToast("Link copied!");
-  };
+    if (sharedParam) {
+      setSharedIds(sharedParam.split(","));
+    }
+    if (filterParam && categories.includes(filterParam)) {
+      setFilter(filterParam);
+    }
+    if (totalParam === "true") {
+      setShowTotal(true);
+    }
+    if (stockParam === "true") {
+      setShowStock(true);
+    }
+    if (hidePriceParam === "true") {
+      setHidePrice(true);
+    }
+  }, [categories]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleSave = async (data) => {
-    if (activeModal === "add") {
-      const created = await createProduct(data);
-      setProducts((prev) => [created, ...prev]);
-      showToast("Product added");
-    } else {
-      const updated = await updateProduct(data.id, data);
-      setProducts((prev) =>
-        prev.map((p) => (p.id === updated.id ? updated : p)),
+  // --- LOAD DATA ON MOUNT ---
+  useEffect(() => {
+    loadProductsFromDB();
+    loadCategoriesFromDB();
+  }, [loadProductsFromDB, loadCategoriesFromDB]);
+
+  // --- DERIVED STATE ---
+  const displayedProducts = useMemo(() => {
+    let filtered = products;
+
+    // 1. Filter by shared IDs or Category
+    if (sharedIds.length > 0) {
+      filtered = filtered.filter((p) => sharedIds.includes(p.id));
+    } else if (filter !== "all") {
+      filtered = filtered.filter((p) => p.category === filter);
+    }
+
+    // 2. Filter by Search Query
+    if (searchQuery.trim() !== "") {
+      const lowerQ = searchQuery.toLowerCase();
+      filtered = filtered.filter((p) => p.name.toLowerCase().includes(lowerQ));
+    }
+
+    // 3. Inject calculated available stock (Total - Hold)
+    return filtered.map((p) => {
+      const t = parseInt(p.totalQuantity);
+      const holdsArr = p.holds || [];
+      const totalHold = holdsArr.reduce(
+        (sum, h) => sum + (parseInt(h.quantity) || 0),
+        0,
       );
-      showToast("Product updated");
+      const calculatedAvailable = isNaN(t)
+        ? ""
+        : Math.max(0, t - totalHold).toString();
+
+      return {
+        ...p,
+        calculatedAvailable,
+        totalHold,
+      };
+    });
+  }, [products, filter, sharedIds, searchQuery]);
+
+  const calculatedTotal = useMemo(() => {
+    if (!showTotal || effectiveHidePrice) return 0;
+    return displayedProducts.reduce((sum, p) => {
+      if (p.isSoldOut) return sum;
+      const priceVal = parseFloat(String(p.price).replace(/[^0-9.-]+/g, ""));
+      return sum + (isNaN(priceVal) ? 0 : priceVal);
+    }, 0);
+  }, [displayedProducts, showTotal, effectiveHidePrice]);
+
+  const formattedTotal =
+    new Intl.NumberFormat("en-IN", {
+      maximumFractionDigits: 0,
+    }).format(calculatedTotal) + " pts";
+
+  // --- HELPERS ---
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 3000);
+  };
+
+  const copyToClipboard = (text) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      showToast("Link copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy", err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  // --- HANDLERS ---
+  const handleSaveProduct = (productData) => {
+    if (activeModal === "add") {
+      setProducts([{ ...productData, id: Date.now().toString() }, ...products]);
+      showToast("Product added successfully");
+    } else if (activeModal === "edit") {
+      setProducts(
+        products.map((p) => (p.id === productData.id ? productData : p)),
+      );
+      showToast("Product updated successfully");
     }
     setActiveModal(null);
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await deleteProduct(id);
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      setActiveModal(null);
-      showToast("Product deleted");
-    } catch (error) {
-      showToast("Failed to delete product");
-    }
-  };
-
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const shareSelected = () => {
-    const base = window.location.origin + "/catalog";
-    copyLink(`${base}?shared=${[...selectedIds].join(",")}`);
-    setIsSelectionMode(false);
-    setSelectedIds(new Set());
-  };
-
-  const shareCategoryLink = (cat) => {
-    copyLink(`${window.location.origin}/catalog?filter=${cat}`);
-  };
-
-  const shareAllLink = () => {
-    copyLink(`${window.location.origin}/catalog`);
+  const handleDeleteProduct = (id) => {
+    setProducts(products.filter((p) => p.id !== id));
+    showToast("Product removed");
+    setActiveModal(null);
   };
 
   const toggleSelection = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    const newSelection = new Set(selectedProductIds);
+    if (newSelection.has(id)) newSelection.delete(id);
+    else newSelection.add(id);
+    setSelectedProductIds(newSelection);
+  };
+
+  const handleGenerateShareLink = ({
+    includeTotal,
+    includeStock,
+    hidePriceConfig,
+  }) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const ids = Array.from(selectedProductIds).join(",");
+    let shareUrl = `${baseUrl}?shared=${ids}`;
+
+    if (includeTotal) shareUrl += "&total=true";
+    if (includeStock) shareUrl += "&stock=true";
+    if (hidePriceConfig) shareUrl += "&hidePrice=true";
+
+    copyToClipboard(shareUrl);
+    setIsSelectionMode(false);
+    setSelectedProductIds(new Set());
+    setActiveModal(null);
+  };
+
+  const copyCategoryLink = (cat) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    copyToClipboard(`${baseUrl}?filter=${cat}`);
+  };
+
+  const toggleAdmin = () => {
+    if (isAdmin) {
+      setIsAdmin(false);
+      setIsSelectionMode(false);
+      showToast("Logged out of Admin mode");
+    } else {
+      setActiveModal("adminLogin");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ── HEADER ── */}
-      <header className="sticky top-0 z-20 bg-white shadow-sm px-3 sm:px-4 py-3 flex items-center justify-between">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">
-            {isSharedView ? "Curated Collection" : "Ready Stock"}
+    <div className="min-h-screen bg-gray-50 font-inter text-gray-900 pb-20">
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-10 bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">
+            {sharedIds.length > 0 ? "Curated Collection" : "Ready Stock"}
           </h1>
-          {!isSharedView && (
-            <p className="text-xs text-gray-500 hidden sm:block">
+          {sharedIds.length === 0 && (
+            <p className="text-xs text-gray-500">
               {isAdmin
                 ? "Admin Mode (Editing Enabled)"
                 : "Viewer Mode (Read-Only)"}
@@ -215,78 +374,89 @@ export default function CatalogClient({
           )}
         </div>
 
-        {!isSharedView && (
-          <div className="flex gap-1.5 sm:gap-2 items-center shrink-0 ml-2">
-            {/* Admin Toggle Button */}
-            <button
-              onClick={() => {
-                if (isAdmin) {
-                  setIsAdmin(false);
-                  showToast("Admin mode disabled");
-                } else {
-                  setActiveModal("adminLogin");
-                }
-              }}
-              className={`p-1.5 sm:p-2 rounded-full transition-colors ${
-                isAdmin
-                  ? "bg-green-100 text-green-600 border border-green-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              title={isAdmin ? "Lock Admin" : "Unlock Admin"}
-            >
-              {isAdmin ? (
-                <Unlock size={18} className="sm:size-5" />
-              ) : (
-                <Lock size={18} className="sm:size-5" />
-              )}
-            </button>
-
-            {isSelectionMode ? (
-              <>
+        <div className="flex items-center gap-2">
+          {/* Viewers & Admin Tools */}
+          {isSelectionMode ? (
+            <>
+              <button
+                onClick={() => setIsSelectionMode(false)}
+                className="p-2 text-gray-500 bg-gray-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+              {selectedProductIds.size > 0 && (
                 <button
-                  onClick={() => {
-                    setIsSelectionMode(false);
-                    setSelectedIds(new Set());
-                  }}
-                  className="p-1.5 sm:p-2 bg-gray-100 text-gray-600 rounded-full"
+                  onClick={() => setActiveModal("shareConfig")}
+                  className="p-2 text-white bg-blue-600 rounded-full flex items-center gap-1 px-4 font-medium"
                 >
-                  <X size={18} className="sm:size-5" />
+                  <Share2 size={18} />
+                  Share ({selectedProductIds.size})
                 </button>
-                {selectedIds.size > 0 && (
-                  <button
-                    onClick={shareSelected}
-                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-full text-xs sm:text-sm font-semibold"
-                  >
-                    <Share2 size={14} className="sm:size-4" />
-                    <span className="hidden sm:inline">Share </span>(
-                    {selectedIds.size})
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
+              )}
+            </>
+          ) : (
+            <>
+              {sharedIds.length === 0 && isAdmin && (
                 <button
                   onClick={() => setActiveModal("shareOptions")}
-                  className="p-1.5 sm:p-2 text-gray-600 hover:bg-gray-100 rounded-full"
-                  title="Share options"
+                  className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+                  title="Share Links"
                 >
-                  <LinkIcon size={20} className="sm:size-5.5" />
+                  <LinkIcon size={22} />
                 </button>
-                <button
-                  onClick={() => setIsSelectionMode(true)}
-                  className="p-1.5 sm:p-2 text-gray-600 hover:bg-gray-100 rounded-full"
-                  title="Select products to share"
-                >
-                  <CheckCircle2 size={20} className="sm:size-5.5" />
-                </button>
-              </>
-            )}
-          </div>
-        )}
+              )}
+              <button
+                onClick={() => setIsSelectionMode(true)}
+                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+                title="Select Products to Share"
+              >
+                <CheckCircle2 size={22} />
+              </button>
+            </>
+          )}
+
+          {/* Admin Toggle Button */}
+          <button
+            onClick={toggleAdmin}
+            className={`p-2 rounded-full border transition-colors ${
+              isAdmin
+                ? "bg-green-50 text-green-600 border-green-200"
+                : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+            }`}
+            title={isAdmin ? "Lock Admin" : "Unlock Admin"}
+          >
+            {isAdmin ? <Unlock size={18} /> : <Lock size={18} />}
+          </button>
+        </div>
       </header>
 
-      {/* ── FILTERS ── */}
-      {!isSharedView && (
+      {/* SEARCH BAR */}
+      <div className="bg-white px-4 py-3 border-b border-gray-100">
+        <div className="relative">
+          <Search
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Search products by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-gray-100 text-sm text-gray-900 rounded-xl pl-10 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* FILTER TABS */}
+      {sharedIds.length === 0 && (
         <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
           {["all", ...categories].map((f) => (
             <button
@@ -313,71 +483,89 @@ export default function CatalogClient({
         </div>
       )}
 
-      {/* ── GRID ── */}
+      {/* PRODUCT GRID */}
       <main className="p-3">
-        {loading ? (
-          <div className="flex items-center justify-center py-32 text-gray-400">
-            <Loader2 className="animate-spin mr-2" size={28} />
-            <span className="text-sm">Loading…</span>
-          </div>
-        ) : displayed.length === 0 ? (
-          <div className="text-center py-24 text-gray-400">
-            <Image className="mx-auto mb-4 opacity-20" size={64} />
-            <p className="font-medium">No products yet</p>
-            {!isSharedView && (
-              <p className="text-sm mt-1">Tap + to add your first item</p>
+        {displayedProducts.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            {searchQuery ? (
+              <>
+                <Search className="mx-auto mb-4 opacity-20" size={64} />
+                <p>No products match "{searchQuery}"</p>
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="mt-4 text-blue-600 font-medium"
+                >
+                  Clear Search
+                </button>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="mx-auto mb-4 opacity-20" size={64} />
+                <p>No products found in this category.</p>
+              </>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {displayed.map((product) => (
+            {displayedProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
                 isSelectionMode={isSelectionMode}
-                isSelected={selectedIds.has(product.id)}
+                isSelected={selectedProductIds.has(product.id)}
+                isAdmin={isAdmin}
+                showStock={showStock}
+                hidePrice={effectiveHidePrice}
+                onSelect={() => toggleSelection(product.id)}
                 onImageClick={() => {
                   if (isSelectionMode) {
                     toggleSelection(product.id);
-                    return;
+                  } else {
+                    // Navigate to product page instead of opening modal
+                    window.location.href = `/product/${product.id}`;
                   }
-                  // Navigate to product page
-                  router.push(`/product/${product.id}`);
                 }}
                 onEdit={() => {
-                  if (isAdmin) {
-                    setCurrentProduct(product);
-                    setActiveModal("edit");
-                  }
+                  setCurrentProduct(product);
+                  setActiveModal("edit");
                 }}
-                onInquire={() => {
-                  const message = `Hello I have inquiry for this ${product.name}`;
-                  const whatsappUrl = `https://wa.me/919712528819?text=${encodeURIComponent(message)}`;
-                  window.open(whatsappUrl, "_blank");
-                }}
-                hideControls={isSharedView}
-                isAdmin={isAdmin}
               />
             ))}
           </div>
         )}
       </main>
 
-      {/* ── FAB ── */}
-      {!isSharedView && !isSelectionMode && isAdmin && (
+      {/* FLOATING ACTION BUTTON */}
+      {isAdmin && sharedIds.length === 0 && !isSelectionMode && (
         <button
           onClick={() => {
             setCurrentProduct(null);
             setActiveModal("add");
           }}
-          className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-transform z-20"
-          aria-label="Add product"
+          className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 transition-transform active:scale-95 z-20"
         >
           <Plus size={28} />
         </button>
       )}
 
-      {/* ── MODALS ── */}
+      {/* TOTAL VALUE BANNER (Viewer Mode) */}
+      {showTotal && sharedIds.length > 0 && !effectiveHidePrice && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20 flex justify-between items-center animate-slide-up">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Estimated Total
+            </span>
+            <span className="text-sm text-gray-500 font-medium">
+              {displayedProducts.length} items
+            </span>
+          </div>
+          <span className="text-2xl font-bold text-blue-600">
+            {formattedTotal}
+          </span>
+        </div>
+      )}
+
+      {/* MODALS */}
       {activeModal === "adminLogin" && (
         <AdminLoginModal
           onClose={() => setActiveModal(null)}
@@ -389,28 +577,6 @@ export default function CatalogClient({
         />
       )}
 
-      {activeModal === "shareOptions" && (
-        <ShareOptionsModal
-          categories={categories}
-          onClose={() => setActiveModal(null)}
-          onCopyCategory={shareCategoryLink}
-          onCustomSelect={() => {
-            setActiveModal(null);
-            setIsSelectionMode(true);
-          }}
-        />
-      )}
-
-      {(activeModal === "add" || activeModal === "edit") && (
-        <ProductFormModal
-          product={activeModal === "edit" ? currentProduct : null}
-          categories={categories}
-          onClose={() => setActiveModal(null)}
-          onSave={handleSave}
-          onDelete={activeModal === "edit" ? handleDelete : null}
-        />
-      )}
-
       {activeModal === "categories" && isAdmin && (
         <ManageCategoriesModal
           categories={categories}
@@ -419,35 +585,42 @@ export default function CatalogClient({
         />
       )}
 
-      {activeModal === "details" && currentProduct && (
-        <ProductDetailsModal
-          product={currentProduct}
-          currentIndex={lightboxIndex}
-          setCurrentIndex={setLightboxIndex}
+      {activeModal === "shareOptions" && (
+        <ShareOptionsModal
+          categories={categories}
           onClose={() => setActiveModal(null)}
-          onOpenZoom={() => setActiveModal("zoom")}
+          onCopyCategory={copyCategoryLink}
+          onCustomSelect={() => {
+            setActiveModal(null);
+            setIsSelectionMode(true);
+          }}
         />
       )}
 
-      {activeModal === "zoom" && currentProduct && currentProduct.images && (
-        <ImageZoomModal
-          imageSrc={currentProduct.images[lightboxIndex]}
-          onClose={() => setActiveModal("details")}
-        />
-      )}
-
-      {activeModal === "lightbox" && currentProduct && (
-        <LightboxModal
-          product={currentProduct}
-          initialIndex={lightboxIndex}
+      {activeModal === "shareConfig" && (
+        <ShareConfigModal
+          selectedCount={selectedProductIds.size}
           onClose={() => setActiveModal(null)}
+          onGenerate={handleGenerateShareLink}
         />
       )}
 
-      {/* ── TOAST ── */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm font-semibold animate-fade-in-up whitespace-nowrap">
-          {toast}
+      {(activeModal === "add" || activeModal === "edit") && isAdmin && (
+        <ProductFormModal
+          product={currentProduct}
+          categories={categories}
+          onClose={() => setActiveModal(null)}
+          onSave={handleSaveProduct}
+          onDelete={() => handleDeleteProduct(currentProduct.id)}
+        />
+      )}
+
+
+
+      {/* TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm font-medium animate-fade-in-up whitespace-nowrap">
+          {toastMessage}
         </div>
       )}
     </div>
@@ -460,48 +633,59 @@ function ProductCard({
   product,
   isSelectionMode,
   isSelected,
+  isAdmin,
+  showStock,
+  hidePrice,
+  onSelect,
   onImageClick,
   onEdit,
-  onInquire,
-  hideControls,
-  isAdmin,
 }) {
+  const displayName = product.name?.trim() || "Untitled Product";
+  const displayPrice = product.price || "-";
   const isSoldOut =
-    product.availableQuantity != null &&
-    product.availableQuantity !== "" &&
-    Number(product.availableQuantity) <= 0;
+    product.isSoldOut ||
+    (product.calculatedAvailable !== "" &&
+      parseInt(product.calculatedAvailable) <= 0);
 
   return (
     <div
-      className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
+      className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all flex flex-col ${
         isSelected
           ? "ring-2 ring-blue-500 border-transparent"
           : "border-gray-100"
       }`}
     >
+      {/* Image Container */}
       <div
-        className="relative aspect-square bg-gray-100 cursor-pointer overflow-hidden group"
+        className="relative aspect-square bg-gray-100 cursor-pointer overflow-hidden group shrink-0"
         onClick={onImageClick}
       >
-          {product.images?.[0] ? (
+        {isSoldOut && (
+          <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider z-10 shadow-sm backdrop-blur-sm">
+            Sold Out
+          </div>
+        )}
+        {product.images?.[0] ? (
             <img
               src={product.images[0]}
-              alt={product.name}
+              alt={displayName}
               className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
         ) : (
           <div className="flex items-center justify-center w-full h-full text-gray-300">
-            <Image size={48} />
+            <ImageIcon size={48} />
           </div>
         )}
 
+        {/* Multiple Images Indicator */}
         {product.images?.length > 1 && (
           <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] font-bold px-2 py-1 rounded-full backdrop-blur-sm">
             1/{product.images.length}
           </div>
         )}
 
+        {/* Selection Overlay */}
         {isSelectionMode && (
           <div className="absolute inset-0 bg-black/10 flex items-start justify-start p-2">
             <div
@@ -517,52 +701,71 @@ function ProductCard({
         )}
       </div>
 
-      <div className="p-3 flex flex-col flex-1">
-        <div className="flex justify-between items-start gap-2 mb-1">
-          <h3 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight flex-1">
-            {product.name}
+      {/* Details */}
+      <div className="p-4 flex flex-col flex-1 bg-white">
+        <div className="flex justify-between items-start gap-2 mb-2">
+          <h3 className="text-[15px] font-semibold text-slate-900 leading-tight line-clamp-2 flex-1">
+            {displayName}
           </h3>
-          {!hideControls && !isSelectionMode && isAdmin && (
+          {isAdmin && !isSelectionMode && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
               }}
-              className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg shrink-0 -mt-1 -mr-1"
-              aria-label="Edit product"
+              className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg shrink-0 -mt-1 -mr-1 transition-colors"
             >
               <Edit2 size={16} />
             </button>
           )}
         </div>
 
-        <div className="mt-auto flex items-center justify-between">
-          {product.price && (
-            <p className="text-sm font-semibold text-blue-600">
-              ₹{product.price}
+        <div className="flex flex-col space-y-1 mt-auto antialiased">
+          {product.size && (
+            <p className="text-[13px] font-medium text-slate-500 truncate">
+              Size: <span className="text-slate-700">{product.size}</span>
             </p>
           )}
-          {product.availableQuantity != null &&
-            product.availableQuantity !== "" && (
-              <p
-                className={`text-xs ${isSoldOut ? "text-red-600 font-semibold" : "text-gray-400"}`}
-              >
-                {isSoldOut ? "Sold Out" : `Qty: ${product.availableQuantity}`}
+          {product.pcsPerCarton && (
+            <p className="text-[13px] font-medium text-slate-500 truncate">
+              Packing:{" "}
+              <span className="text-slate-700">{product.pcsPerCarton}</span>
+            </p>
+          )}
+          {(showStock || isAdmin) && product.calculatedAvailable !== "" && (
+            <p className="text-[13px] font-medium text-slate-500 truncate mt-1">
+              Stock:{" "}
+              <span className="text-slate-700">
+                {product.calculatedAvailable}
+              </span>
+              {isAdmin && product.totalHold > 0 && (
+                <span className="text-amber-600 ml-1 font-semibold text-[11px]">
+                  (Hold: {product.totalHold})
+                </span>
+              )}
+            </p>
+          )}
+          {isSoldOut ? (
+            <p className="text-[13px] font-bold text-red-600 pt-1.5 truncate uppercase tracking-wider">
+              Sold Out
+            </p>
+          ) : (
+            !hidePrice && (
+              <p className="text-[15px] font-semibold text-slate-900 pt-1.5 truncate">
+              {displayPrice}{" "}
+                <span className="text-xs font-normal text-slate-500">
+                  {product.price ? "pts" : ""}
+                </span>
               </p>
-            )}
+            )
+          )}
+          {product.deliveryTime && (
+            <p className="text-[12px] font-medium text-amber-600 truncate mt-0.5">
+              Delivery:{" "}
+              <span className="text-amber-700">{product.deliveryTime}</span>
+            </p>
+          )}
         </div>
-
-        {!hideControls && !isSelectionMode && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onInquire();
-            }}
-            className="w-full mt-2 bg-green-600 text-white text-sm font-semibold py-2 px-3 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            Inquire Now
-          </button>
-        )}
       </div>
     </div>
   );

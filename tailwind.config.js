@@ -4,6 +4,12 @@ module.exports = {
     './src/app/**/*.{js,jsx}',
     './src/components/**/*.{js,jsx}',
   ],
-  theme: { extend: {} },
+  theme: { 
+    extend: {
+      fontFamily: {
+        inter: ['Inter', 'system-ui', 'sans-serif'],
+      }
+    } 
+  },
   plugins: [],
 }

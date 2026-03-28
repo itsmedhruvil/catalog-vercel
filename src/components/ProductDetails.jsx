@@ -21,8 +21,8 @@ export default function ProductDetails({ product }) {
           
           <div className="flex items-center gap-4">
             <div className="text-left">
-              <p className="text-xs sm:text-sm md:text-base text-gray-500 font-medium">Price</p>
-              <p className="text-2xl sm:text-3xl font-bold text-blue-600">₹{product.price}</p>
+              <p className="text-xs sm:text-sm md:text-base text-gray-500 font-medium">Points</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600">{product.price}</p>
             </div>
             
           </div>
@@ -36,8 +36,8 @@ export default function ProductDetails({ product }) {
                 <Layers size={20} className="text-gray-500" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Size</p>
-                <p className="font-semibold text-gray-900">{product.size}</p>
+                <p className="text-sm text-gray-500 font-medium uppercase tracking-wider mb-0.5">Size</p>
+                <p className="text-xs font-semibold text-gray-900">{product.size}</p>
               </div>
             </div>
           )}
@@ -49,7 +49,7 @@ export default function ProductDetails({ product }) {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Packing</p>
-                <p className="font-semibold text-gray-900">{product.pcsPerCarton}</p>
+                <p className="text-xs font-semibold text-gray-900">{product.pcsPerCarton}</p>
               </div>
             </div>
           )}
@@ -61,7 +61,7 @@ export default function ProductDetails({ product }) {
               </div>
               <div>
                 <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-0.5">In Stock</p>
-                <p className="font-semibold text-blue-900">{product.availableQuantity} available</p>
+                <p className="text-xs font-semibold text-blue-900">{product.availableQuantity} available</p>
               </div>
             </div>
           )}

@@ -155,7 +155,7 @@ export default function ProductImageGallery({ images, productName, imageFit = "c
               <img
                 src={image}
                 alt={`${productName} thumbnail ${index + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 loading="lazy"
               />
               {index === mainImageIndex && (
