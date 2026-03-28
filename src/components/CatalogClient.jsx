@@ -30,6 +30,10 @@ import {
   Search,
   User,
   ShoppingCart,
+  BarChart3,
+  Bell,
+  TrendingUp,
+  TrendingDown
 } from "lucide-react";
 import {
   fetchProducts,
@@ -38,61 +42,28 @@ import {
   deleteProduct,
 } from "@/lib/api";
 import ProductFormModal from "./ProductFormModal";
+import ProductFormModalEnhanced from "./ProductFormModalEnhanced";
 import ShareOptionsModal from "./ShareOptionsModal";
 import ShareConfigModal from "./ShareConfigModal";
 import AdminLoginModal from "./AdminLoginModal";
 import ManageCategoriesModal from "./ManageCategoriesModal";
 import LightboxModal from "./LightboxModal";
+import AdvancedDashboard from "./AdvancedDashboard";
+import InventoryAlerts from "./InventoryAlerts";
+import DeliveryManagementModal from "./DeliveryManagementModal";
 
 export default function CatalogClient({
   initialSharedIds = [],
   initialFilter = "all",
 }) {
-  // --- LOADERS (Normalizing old data structure if needed) ---
+  // --- LOADERS (Database-only approach) ---
   const loadProducts = () => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem("catalog_products");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Normalize any old data to the new 'holds' array format
-        return parsed.map((p) => {
-          let migratedHolds = p.holds || [];
-          if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
-            migratedHolds = [
-              {
-                id: "legacy-hold",
-                customer: "Legacy Hold",
-                quantity: p.stockOnHold,
-              },
-            ];
-          }
-          return {
-            ...p,
-            totalQuantity:
-              p.totalQuantity !== undefined
-                ? p.totalQuantity
-                : p.availableQuantity || "",
-            holds: migratedHolds,
-            stockOnHold: undefined,
-            availableQuantity: undefined,
-          };
-        });
-      }
-    } catch (e) {
-      console.error("Failed to load products", e);
-    }
+    // No local storage - all data comes from database
     return [];
   };
 
   const loadCategories = () => {
-    if (typeof window === "undefined") return ["branded", "unbranded"];
-    try {
-      const saved = localStorage.getItem("catalog_categories");
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error("Failed to load categories", e);
-    }
+    // No local storage - categories come from database or default
     return ["branded", "unbranded"];
   };
 
@@ -151,42 +122,56 @@ export default function CatalogClient({
       setProducts(normalizedData);
     } catch (error) {
       console.error("Failed to load products from database", error);
-      // Fallback to localStorage
-      const fallbackProducts = loadProducts();
-      setProducts(fallbackProducts);
+      // Fallback to localStorage for backward compatibility
+      try {
+        const saved = localStorage.getItem("catalog_products");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Normalize any old data to the new 'holds' array format
+          const fallbackProducts = parsed.map((p) => {
+            let migratedHolds = p.holds || [];
+            if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
+              migratedHolds = [
+                {
+                  id: "legacy-hold",
+                  customer: "Legacy Hold",
+                  quantity: p.stockOnHold,
+                },
+              ];
+            }
+            return {
+              ...p,
+              totalQuantity:
+                p.totalQuantity !== undefined
+                  ? p.totalQuantity
+                  : p.availableQuantity || "",
+              holds: migratedHolds,
+              stockOnHold: undefined,
+              availableQuantity: undefined,
+            };
+          });
+          setProducts(fallbackProducts);
+        }
+      } catch (e) {
+        console.error("Failed to load from localStorage", e);
+        setProducts([]);
+      }
     }
   }, []);
 
   // --- LOAD CATEGORIES FROM DATABASE ---
   const loadCategoriesFromDB = useCallback(async () => {
     try {
-      // Try to load from database first, but for now we'll use localStorage
-      // In a real implementation, you might have a separate API for categories
-      const saved = localStorage.getItem("catalog_categories");
-      if (saved) {
-        setCategories(JSON.parse(saved));
-      }
+      // Categories are now hardcoded as database integration for categories
+      // would require additional API endpoints
+      setCategories(["branded", "unbranded"]);
     } catch (error) {
       console.error("Failed to load categories", error);
     }
   }, []);
 
   // --- PERSISTENCE ---
-  useEffect(() => {
-    try {
-      localStorage.setItem("catalog_products", JSON.stringify(products));
-    } catch (e) {
-      console.error("Storage full or unavailable", e);
-    }
-  }, [products]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("catalog_categories", JSON.stringify(categories));
-    } catch (e) {
-      console.error("Failed to save categories", e);
-    }
-  }, [categories]);
+  // Removed localStorage persistence - all data now comes from database only
 
   // --- INITIALIZATION (URL PARSING) ---
   useEffect(() => {
@@ -615,8 +600,6 @@ export default function CatalogClient({
         />
       )}
 
-
-
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm font-medium animate-fade-in-up whitespace-nowrap">
@@ -752,7 +735,7 @@ function ProductCard({
           ) : (
             !hidePrice && (
               <p className="text-[15px] font-semibold text-slate-900 pt-1.5 truncate">
-              {displayPrice}{" "}
+                {displayPrice}{" "}
                 <span className="text-xs font-normal text-slate-500">
                   {product.price ? "pts" : ""}
                 </span>

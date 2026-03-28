@@ -41,6 +41,51 @@ const productSchema = new mongoose.Schema(
     availableQuantity: { type: String, default: '' },
     size:            { type: String, default: '' },
     pcsPerCarton:    { type: String, default: '' },
+    
+    // Delivery Management Fields
+    deliveryTime:    { type: String, default: '' },
+    deliveryStatus:  { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
+    deliveryTracking: { type: String, default: '' },
+    deliveryNotes:   { type: String, default: '' },
+    estimatedDelivery: { type: Date },
+    
+    // Analytics Fields
+    salesLast30Days: { type: Number, default: 0 },
+    salesPrevious30Days: { type: Number, default: 0 },
+    totalSales:      { type: Number, default: 0 },
+    views:           { type: Number, default: 0 },
+    lastSoldAt:      { type: Date },
+    createdAt:       { type: Date, default: Date.now },
+    
+    // Inventory Analytics
+    holds:           { type: [{ id: String, customer: String, quantity: String }], default: [] },
+    reorderLevel:    { type: Number, default: 0 },
+    reorderQuantity: { type: Number, default: 0 },
+    
+    // Performance Metrics
+    conversionRate:  { type: Number, default: 0 },
+    returnRate:      { type: Number, default: 0 },
+    avgDeliveryTime: { type: Number, default: 0 }, // in days
+    
+    // Customer Analytics
+    customerReviews: { type: [{ rating: Number, comment: String, date: Date, customerName: String }], default: [] },
+    avgRating:       { type: Number, default: 0 },
+    
+    // Supplier Information
+    supplier:        { type: String, default: '' },
+    supplierContact: { type: String, default: '' },
+    supplierLeadTime: { type: Number, default: 0 }, // in days
+    
+    // Warehouse Management
+    warehouseLocation: { type: String, default: '' },
+    binLocation:       { type: String, default: '' },
+    batchNumber:       { type: String, default: '' },
+    expiryDate:        { type: Date },
+    
+    // Tags and Classification
+    tags:              { type: [String], default: [] },
+    priority:          { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+    isFeatured:        { type: Boolean, default: false },
   },
   {
     timestamps: true,
