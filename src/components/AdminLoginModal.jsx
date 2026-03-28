@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Lock, Unlock } from 'lucide-react'
+import { enableAdminMode } from '@/lib/admin'
 
 export default function AdminLoginModal({ onClose, onSuccess }) {
   const [password, setPassword] = useState('')
@@ -8,6 +9,8 @@ export default function AdminLoginModal({ onClose, onSuccess }) {
   const handleLogin = (e) => {
     e.preventDefault()
     if (password === 'TAGOFFICE@2026') {
+      // Enable admin mode persistently
+      enableAdminMode();
       onSuccess()
     } else {
       setError('Incorrect password')

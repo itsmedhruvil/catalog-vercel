@@ -6,8 +6,11 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const products = await readProducts()
+    console.log('API returning products:', products)
+    console.log('API products count:', products.length)
     return Response.json(products)
   } catch (err) {
+    console.error('API error:', err)
     return Response.json({ error: err.message }, { status: 500 })
   }
 }

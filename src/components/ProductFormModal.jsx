@@ -211,6 +211,22 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
               />
             </div>
 
+            {/* Delivery Time */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Delivery Time</label>
+              <input
+                type="text"
+                name="deliveryTime"
+                value={form.deliveryTime || ""}
+                onChange={handleChange}
+                placeholder="e.g., 3-5 days, 1 week, 10-15 days"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Estimated delivery time for this product
+              </p>
+            </div>
+
             {/* Description */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Details (Optional)</label>

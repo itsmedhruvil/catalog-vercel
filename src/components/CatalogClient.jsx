@@ -41,6 +41,7 @@ import {
   updateProduct,
   deleteProduct,
 } from "@/lib/api";
+import { isAdminMode, toggleAdminMode } from "@/lib/admin";
 import ProductFormModal from "./ProductFormModal";
 import ProductFormModalEnhanced from "./ProductFormModalEnhanced";
 import ShareOptionsModal from "./ShareOptionsModal";
@@ -122,40 +123,9 @@ export default function CatalogClient({
       setProducts(normalizedData);
     } catch (error) {
       console.error("Failed to load products from database", error);
-      // Fallback to localStorage for backward compatibility
-      try {
-        const saved = localStorage.getItem("catalog_products");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // Normalize any old data to the new 'holds' array format
-          const fallbackProducts = parsed.map((p) => {
-            let migratedHolds = p.holds || [];
-            if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
-              migratedHolds = [
-                {
-                  id: "legacy-hold",
-                  customer: "Legacy Hold",
-                  quantity: p.stockOnHold,
-                },
-              ];
-            }
-            return {
-              ...p,
-              totalQuantity:
-                p.totalQuantity !== undefined
-                  ? p.totalQuantity
-                  : p.availableQuantity || "",
-              holds: migratedHolds,
-              stockOnHold: undefined,
-              availableQuantity: undefined,
-            };
-          });
-          setProducts(fallbackProducts);
-        }
-      } catch (e) {
-        console.error("Failed to load from localStorage", e);
-        setProducts([]);
-      }
+      setProducts([]);
+      // Use a simple alert instead of showToast to avoid circular dependency
+      alert("Failed to load products. Please check your connection.");
     }
   }, []);
 
@@ -198,6 +168,38 @@ export default function CatalogClient({
       setHidePrice(true);
     }
   }, [categories]);
+
+  // --- ADMIN STATE INITIALIZATION ---
+  useEffect(() => {
+    // Check admin state synchronously to prevent flash of non-admin content
+    const checkAdminState = () => {
+      const adminEnabled = isAdminMode();
+      setIsAdmin(adminEnabled);
+    };
+    
+    // Check immediately on mount
+    checkAdminState();
+    
+    // Also check on page visibility change (helps with browser back button)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkAdminState();
+      }
+    };
+    
+    // Also check on page focus (helps with browser back button)
+    const handleFocus = () => {
+      checkAdminState();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // --- LOAD DATA ON MOUNT ---
   useEffect(() => {
@@ -277,23 +279,38 @@ export default function CatalogClient({
   };
 
   // --- HANDLERS ---
-  const handleSaveProduct = (productData) => {
-    if (activeModal === "add") {
-      setProducts([{ ...productData, id: Date.now().toString() }, ...products]);
-      showToast("Product added successfully");
-    } else if (activeModal === "edit") {
-      setProducts(
-        products.map((p) => (p.id === productData.id ? productData : p)),
-      );
-      showToast("Product updated successfully");
+  const handleSaveProduct = async (productData) => {
+    try {
+      if (activeModal === "add") {
+        // Create new product in database
+        const newProduct = await createProduct(productData);
+        setProducts([newProduct, ...products]);
+        showToast("Product added successfully");
+      } else if (activeModal === "edit") {
+        // Update existing product in database
+        const updatedProduct = await updateProduct(productData.id, productData);
+        setProducts(
+          products.map((p) => (p.id === productData.id ? updatedProduct : p)),
+        );
+        showToast("Product updated successfully");
+      }
+      setActiveModal(null);
+    } catch (error) {
+      console.error("Failed to save product", error);
+      showToast("Failed to save product. Please try again.");
     }
-    setActiveModal(null);
   };
 
-  const handleDeleteProduct = (id) => {
-    setProducts(products.filter((p) => p.id !== id));
-    showToast("Product removed");
-    setActiveModal(null);
+  const handleDeleteProduct = async (id) => {
+    try {
+      await deleteProduct(id);
+      setProducts(products.filter((p) => p.id !== id));
+      showToast("Product removed successfully");
+      setActiveModal(null);
+    } catch (error) {
+      console.error("Failed to delete product", error);
+      showToast("Failed to remove product. Please try again.");
+    }
   };
 
   const toggleSelection = (id) => {
@@ -329,6 +346,8 @@ export default function CatalogClient({
 
   const toggleAdmin = () => {
     if (isAdmin) {
+      // Disable admin mode persistently
+      toggleAdminMode();
       setIsAdmin(false);
       setIsSelectionMode(false);
       showToast("Logged out of Admin mode");
@@ -360,6 +379,38 @@ export default function CatalogClient({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Analytics & Admin Tools */}
+          {sharedIds.length === 0 && isAdmin && (
+            <>
+              {/* Analytics Dashboard */}
+              <button
+                onClick={() => window.location.href = '/analytics'}
+                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+                title="Analytics Dashboard"
+              >
+                <BarChart3 size={22} />
+              </button>
+              
+              {/* Inventory Alerts */}
+              <button
+                onClick={() => window.location.href = '/alerts'}
+                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+                title="Inventory Alerts"
+              >
+                <Bell size={22} />
+              </button>
+              
+              {/* Delivery Management */}
+              <button
+                onClick={() => window.location.href = '/delivery'}
+                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+                title="Delivery Management"
+              >
+                <Truck size={22} />
+              </button>
+            </>
+          )}
+
           {/* Viewers & Admin Tools */}
           {isSelectionMode ? (
             <>
@@ -737,7 +788,7 @@ function ProductCard({
               <p className="text-[15px] font-semibold text-slate-900 pt-1.5 truncate">
                 {displayPrice}{" "}
                 <span className="text-xs font-normal text-slate-500">
-                  {product.price ? "pts" : ""}
+                  pts
                 </span>
               </p>
             )
