@@ -115,7 +115,26 @@ export default function SimpleInventoryAlerts({ products = [], setProducts, show
   const dismissAlert = (alertId) => {
     // For now, we'll just show a toast since we don't have persistent alert storage
     const alert = alerts.find(a => a.id === alertId);
-    showToast(`Dismissed: ${alert?.title}`);
+    showToast(`Alert dismissed: ${alert?.title}`);
+  };
+
+  const handleQuickAction = (action) => {
+    switch (action) {
+      case 'addProduct':
+        showToast('Redirecting to add new product...');
+        // In a real app, this would navigate to product creation
+        break;
+      case 'updateInventory':
+        showToast('Redirecting to inventory management...');
+        // In a real app, this would navigate to inventory management
+        break;
+      case 'reviewOrders':
+        showToast('Redirecting to order review...');
+        // In a real app, this would navigate to order management
+        break;
+      default:
+        showToast('Action in development');
+    }
   };
 
   const exportAlerts = () => {
@@ -359,15 +378,24 @@ export default function SimpleInventoryAlerts({ products = [], setProducts, show
             Quick Actions
           </h3>
           <div className="space-y-3">
-            <button className="w-full p-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-left">
+            <button 
+              onClick={() => handleQuickAction('addProduct')}
+              className="w-full p-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-left cursor-pointer"
+            >
               <div className="font-semibold">Add New Product</div>
               <div className="text-xs text-gray-600">Add products to prevent stockouts</div>
             </button>
-            <button className="w-full p-3 bg-green-50 text-green-700 rounded-lg font-medium hover:bg-green-100 transition-colors text-left">
+            <button 
+              onClick={() => handleQuickAction('updateInventory')}
+              className="w-full p-3 bg-green-50 text-green-700 rounded-lg font-medium hover:bg-green-100 transition-colors text-left cursor-pointer"
+            >
               <div className="font-semibold">Update Inventory</div>
               <div className="text-xs text-gray-600">Update stock levels and delivery times</div>
             </button>
-            <button className="w-full p-3 bg-purple-50 text-purple-700 rounded-lg font-medium hover:bg-purple-100 transition-colors text-left">
+            <button 
+              onClick={() => handleQuickAction('reviewOrders')}
+              className="w-full p-3 bg-purple-50 text-purple-700 rounded-lg font-medium hover:bg-purple-100 transition-colors text-left cursor-pointer"
+            >
               <div className="font-semibold">Review Orders</div>
               <div className="text-xs text-gray-600">Check pending orders and deliveries</div>
             </button>

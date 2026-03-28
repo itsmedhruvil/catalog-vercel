@@ -382,6 +382,15 @@ export default function CatalogClient({
           {/* Analytics & Admin Tools */}
           {sharedIds.length === 0 && isAdmin && (
             <>
+              {/* Orders Management */}
+              <button
+                onClick={() => window.location.href = '/orders'}
+                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
+                title="Orders Management"
+              >
+                <ShoppingCart size={22} />
+              </button>
+              
               {/* Analytics Dashboard */}
               <button
                 onClick={() => window.location.href = '/analytics'}

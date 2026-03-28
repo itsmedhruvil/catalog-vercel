@@ -147,6 +147,44 @@ export default function SimpleDeliveryManagement({ isOpen, onClose, products = [
     showToast(`Updated delivery status to ${newStatus}`);
   };
 
+  const handleQuickAction = (action) => {
+    switch (action) {
+      case 'addSupplier':
+        showToast('Redirecting to add new supplier...');
+        // In a real app, this would navigate to supplier management
+        break;
+      case 'updateWarehouse':
+        showToast('Redirecting to warehouse management...');
+        // In a real app, this would navigate to warehouse management
+        break;
+      case 'trackShipment':
+        showToast('Redirecting to shipment tracking...');
+        // In a real app, this would navigate to shipment tracking
+        break;
+      case 'generateReport':
+        exportDeliveryReport();
+        break;
+      default:
+        showToast('Action in development');
+    }
+  };
+
+  const handleProductAction = (productId, action) => {
+    const product = enhancedProducts.find(p => p.id === productId);
+    switch (action) {
+      case 'edit':
+        showToast(`Editing product: ${product?.name}`);
+        // In a real app, this would open an edit modal or navigate to edit page
+        break;
+      case 'view':
+        showToast(`Viewing details for: ${product?.name}`);
+        // In a real app, this would open a details modal or navigate to product page
+        break;
+      default:
+        showToast('Action in development');
+    }
+  };
+
   const exportDeliveryReport = () => {
     const csvContent = [
       ['Product Name', 'Supplier', 'Warehouse', 'Status', 'Estimated Delivery', 'Tracking Number'],
@@ -365,19 +403,31 @@ export default function SimpleDeliveryManagement({ isOpen, onClose, products = [
           <div className="bg-white rounded-xl p-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="w-full p-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-left">
+              <button 
+                onClick={() => handleQuickAction('addSupplier')}
+                className="w-full p-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-left cursor-pointer"
+              >
                 <div className="font-semibold">Add New Supplier</div>
                 <div className="text-xs text-gray-600">Manage your supplier network</div>
               </button>
-              <button className="w-full p-3 bg-green-50 text-green-700 rounded-lg font-medium hover:bg-green-100 transition-colors text-left">
+              <button 
+                onClick={() => handleQuickAction('updateWarehouse')}
+                className="w-full p-3 bg-green-50 text-green-700 rounded-lg font-medium hover:bg-green-100 transition-colors text-left cursor-pointer"
+              >
                 <div className="font-semibold">Update Warehouse</div>
                 <div className="text-xs text-gray-600">Manage warehouse locations</div>
               </button>
-              <button className="w-full p-3 bg-purple-50 text-purple-700 rounded-lg font-medium hover:bg-purple-100 transition-colors text-left">
+              <button 
+                onClick={() => handleQuickAction('trackShipment')}
+                className="w-full p-3 bg-purple-50 text-purple-700 rounded-lg font-medium hover:bg-purple-100 transition-colors text-left cursor-pointer"
+              >
                 <div className="font-semibold">Track Shipment</div>
                 <div className="text-xs text-gray-600">Monitor delivery progress</div>
               </button>
-              <button className="w-full p-3 bg-orange-50 text-orange-700 rounded-lg font-medium hover:bg-orange-100 transition-colors text-left">
+              <button 
+                onClick={() => handleQuickAction('generateReport')}
+                className="w-full p-3 bg-orange-50 text-orange-700 rounded-lg font-medium hover:bg-orange-100 transition-colors text-left cursor-pointer"
+              >
                 <div className="font-semibold">Generate Report</div>
                 <div className="text-xs text-gray-600">Export delivery analytics</div>
               </button>
@@ -458,10 +508,16 @@ export default function SimpleDeliveryManagement({ isOpen, onClose, products = [
                     </td>
                     <td className="py-3">
                       <div className="flex gap-2">
-                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                        <button 
+                          onClick={() => handleProductAction(product.id, 'edit')}
+                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                        >
                           <Edit2 size={16} />
                         </button>
-                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                        <button 
+                          onClick={() => handleProductAction(product.id, 'view')}
+                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                        >
                           <Eye size={16} />
                         </button>
                       </div>
