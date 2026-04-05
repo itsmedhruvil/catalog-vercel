@@ -31,6 +31,15 @@ const DELIVERY_STATUSES = [
 
 const CATEGORIES = ['branded', 'unbranded', 'featured', 'high-priority', 'low-stock'];
 
+// Helper function to get stock value with proper fallback
+const getStockValue = (product) => {
+  const hasTotalQty = product.totalQuantity !== undefined && product.totalQuantity !== null && product.totalQuantity !== 0;
+  const hasAvailableQty = product.availableQuantity != null && product.availableQuantity !== '';
+  return hasTotalQty 
+    ? parseInt(product.totalQuantity) || 0
+    : (hasAvailableQty ? parseInt(product.availableQuantity) || 0 : 0);
+};
+
 export default function AdvancedDashboard({ products, setProducts, showToast }) {
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -42,7 +51,7 @@ export default function AdvancedDashboard({ products, setProducts, showToast }) 
   // Analytics calculations
   const analytics = useMemo(() => {
     const totalProducts = products.length;
-    const totalStock = products.reduce((sum, p) => sum + (parseInt(p.availableQuantity) || 0), 0);
+    const totalStock = products.reduce((sum, p) => sum + getStockValue(p), 0);
     const totalSales = products.reduce((sum, p) => sum + (p.totalSales || 0), 0);
     const totalViews = products.reduce((sum, p) => sum + (p.views || 0), 0);
     const avgRating = products.length > 0 
@@ -66,13 +75,13 @@ export default function AdvancedDashboard({ products, setProducts, showToast }) 
 
     // Inventory health
     const lowStockProducts = products.filter(p => {
-      const stock = parseInt(p.availableQuantity) || 0;
+      const stock = getStockValue(p);
       const reorderLevel = parseInt(p.reorderLevel) || 0;
       return stock <= reorderLevel && reorderLevel > 0;
     }).length;
 
     const highStockProducts = products.filter(p => {
-      const stock = parseInt(p.availableQuantity) || 0;
+      const stock = getStockValue(p);
       const sales = p.salesLast30Days || 0;
       return stock > 100 && sales < 10; // High stock, low sales
     }).length;
@@ -101,7 +110,7 @@ export default function AdvancedDashboard({ products, setProducts, showToast }) 
         };
       }
       acc[supplier].productCount++;
-      acc[supplier].totalStock += parseInt(p.availableQuantity) || 0;
+      acc[supplier].totalStock += getStockValue(p);
       acc[supplier].avgLeadTime += p.supplierLeadTime || 0;
       acc[supplier].totalSales += p.totalSales || 0;
       return acc;
@@ -156,8 +165,8 @@ export default function AdvancedDashboard({ products, setProducts, showToast }) 
           bValue = b.salesLast30Days || 0;
           break;
         case 'stock':
-          aValue = parseInt(a.availableQuantity) || 0;
-          bValue = parseInt(b.availableQuantity) || 0;
+          aValue = getStockValue(a);
+          bValue = getStockValue(b);
           break;
         case 'rating':
           aValue = a.avgRating || 0;
@@ -188,7 +197,7 @@ export default function AdvancedDashboard({ products, setProducts, showToast }) 
       ...filteredProducts.map(p => [
         p.name,
         p.category,
-        p.availableQuantity || 0,
+        getStockValue(p),
         p.salesLast30Days || 0,
         p.totalSales || 0,
         p.avgRating || 0,
@@ -561,7 +570,7 @@ export default function AdvancedDashboard({ products, setProducts, showToast }) 
                       {product.category}
                     </span>
                   </td>
-                  <td className="py-3 font-medium">{product.availableQuantity || 0}</td>
+                  <td className="py-3 font-medium">{getStockValue(product)}</td>
                   <td className="py-3 font-medium text-green-600">{product.salesLast30Days || 0}</td>
                   <td className="py-3">
                     <div className="flex items-center gap-1">

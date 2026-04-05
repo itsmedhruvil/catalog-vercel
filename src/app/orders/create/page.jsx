@@ -329,9 +329,65 @@ export default function CreateOrderPage() {
     updateOrderTotals(updatedItems);
   };
 
+  // Shipping rates configuration
+  const SHIPPING_RATES = {
+    standard: { baseRate: 50, freeThreshold: 500 },    // Free shipping above ₹500
+    express: { baseRate: 120, freeThreshold: 1000 },   // Free shipping above ₹1000
+    pickup: { baseRate: 0, freeThreshold: 0 }          // Always free
+  };
+
+  // Tax rate (GST - 18%)
+  const TAX_RATE = 0.18;
+
+  // Discount tiers (auto-applied based on subtotal)
+  const DISCOUNT_TIERS = [
+    { threshold: 5000, percentage: 0.10 },   // 10% off above ₹5000
+    { threshold: 3000, percentage: 0.05 },   // 5% off above ₹3000
+    { threshold: 1000, percentage: 0.02 }    // 2% off above ₹1000
+  ];
+
+  // Calculate shipping based on delivery method and subtotal
+  const calculateShipping = () => {
+    const method = orderData.delivery.method;
+    const rate = SHIPPING_RATES[method] || SHIPPING_RATES.standard;
+    return orderData.subtotal >= rate.freeThreshold ? 0 : rate.baseRate;
+  };
+
+  // Calculate tax (18% GST)
+  const calculateTax = () => {
+    return Math.round(orderData.subtotal * TAX_RATE);
+  };
+
+  // Calculate auto-discount based on subtotal
+  const calculateDiscount = () => {
+    for (const tier of DISCOUNT_TIERS) {
+      if (orderData.subtotal >= tier.threshold) {
+        return Math.round(orderData.subtotal * tier.percentage);
+      }
+    }
+    return 0;
+  };
+
+  // Get applied discount description
+  const getDiscountDescription = () => {
+    for (const tier of DISCOUNT_TIERS) {
+      if (orderData.subtotal >= tier.threshold) {
+        return `${tier.percentage * 100}% auto-discount (Orders above ₹${tier.threshold})`;
+      }
+    }
+    return 'No discount applied';
+  };
+
+  const shipping = calculateShipping();
+  const tax = calculateTax();
+  const discount = calculateDiscount();
+
   const updateOrderTotals = (items) => {
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const totalAmount = subtotal + orderData.tax + orderData.shipping - orderData.discount;
+    const calculatedTax = Math.round(subtotal * TAX_RATE);
+    const calculatedShipping = SHIPPING_RATES[orderData.delivery.method]?.baseRate || 50;
+    const calculatedDiscount = calculateDiscountForSubtotal(subtotal);
+    const totalAmount = subtotal + calculatedTax + calculatedShipping - calculatedDiscount;
     
     setOrderData(prev => ({
       ...prev,
@@ -339,6 +395,16 @@ export default function CreateOrderPage() {
       subtotal,
       totalAmount
     }));
+  };
+
+  // Calculate discount for a given subtotal (used in updateOrderTotals)
+  const calculateDiscountForSubtotal = (subtotal) => {
+    for (const tier of DISCOUNT_TIERS) {
+      if (subtotal >= tier.threshold) {
+        return Math.round(subtotal * tier.percentage);
+      }
+    }
+    return 0;
   };
 
   const handleSaveOrder = async () => {
@@ -889,55 +955,50 @@ export default function CreateOrderPage() {
             </div>
             
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Tax</p>
-              <input
-                type="number"
-                value={orderData.tax}
-                onChange={(e) => {
-                  const tax = parseFloat(e.target.value) || 0;
-                  const totalAmount = orderData.subtotal + tax + orderData.shipping - orderData.discount;
-                  setOrderData(prev => ({ ...prev, tax, totalAmount }));
-                }}
-                className="w-full text-2xl font-bold text-gray-900 bg-transparent border-none outline-none"
-                placeholder="0"
-              />
+              <p className="text-sm text-gray-600">Tax (18% GST)</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(tax)}</p>
+              <p className="text-xs text-gray-400 mt-1">Auto-calculated</p>
             </div>
             
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600">Shipping</p>
-              <input
-                type="number"
-                value={orderData.shipping}
-                onChange={(e) => {
-                  const shipping = parseFloat(e.target.value) || 0;
-                  const totalAmount = orderData.subtotal + orderData.tax + shipping - orderData.discount;
-                  setOrderData(prev => ({ ...prev, shipping, totalAmount }));
-                }}
-                className="w-full text-2xl font-bold text-gray-900 bg-transparent border-none outline-none"
-                placeholder="0"
-              />
+              <p className={`text-2xl font-bold ${shipping === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                {shipping === 0 ? 'Free' : formatCurrency(shipping)}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {shipping === 0 
+                  ? 'Free (Above threshold)' 
+                  : orderData.delivery.method === 'express'
+                    ? 'Express delivery'
+                    : orderData.delivery.method === 'pickup'
+                      ? 'Store pickup'
+                      : 'Standard delivery'}
+              </p>
             </div>
             
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600">Discount</p>
-              <input
-                type="number"
-                value={orderData.discount}
-                onChange={(e) => {
-                  const discount = parseFloat(e.target.value) || 0;
-                  const totalAmount = orderData.subtotal + orderData.tax + orderData.shipping - discount;
-                  setOrderData(prev => ({ ...prev, discount, totalAmount }));
-                }}
-                className="w-full text-2xl font-bold text-gray-900 bg-transparent border-none outline-none"
-                placeholder="0"
-              />
+              <p className={`text-2xl font-bold ${discount > 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                {discount > 0 ? `- ${formatCurrency(discount)}` : formatCurrency(discount)}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{getDiscountDescription()}</p>
             </div>
           </div>
+
+          {/* Recalculate total with auto-calculated values */}
+          {(() => {
+            const calculatedTotal = orderData.subtotal + tax + shipping - discount;
+            // Update orderData.totalAmount if it differs
+            if (calculatedTotal !== orderData.totalAmount && orderData.items.length > 0) {
+              setOrderData(prev => ({ ...prev, totalAmount: calculatedTotal }));
+            }
+            return null;
+          })()}
 
           <div className="mt-6 border-t border-gray-200 pt-4">
             <div className="flex justify-between items-center text-lg font-semibold text-gray-900">
               <span>Total Amount</span>
-              <span className="text-2xl">{formatCurrency(orderData.totalAmount)}</span>
+              <span className="text-2xl text-green-600">{formatCurrency(orderData.totalAmount)}</span>
             </div>
           </div>
 

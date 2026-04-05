@@ -29,12 +29,31 @@ export default function SimpleAnalyticsDashboard({ products = [], setProducts, s
   // Simple analytics calculations based on existing data
   const analytics = useMemo(() => {
     const totalProducts = products.length;
-    const totalStock = products.reduce((sum, p) => {
-      const stock = parseInt(p.totalQuantity || p.availableQuantity) || 0;
+    
+    // Calculate total stock with detailed breakdown
+    let totalStockValue = 0;
+    let totalHoldsValue = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    let inStockCount = 0;
+    
+    products.forEach(p => {
+      const stock = parseInt(p.totalQuantity) || parseInt(p.availableQuantity) || 0;
       const holds = p.holds || [];
       const totalHold = holds.reduce((sum, h) => sum + (parseInt(h.quantity) || 0), 0);
-      return sum + Math.max(0, stock - totalHold);
-    }, 0);
+      const available = Math.max(0, stock - totalHold);
+      
+      totalStockValue += available;
+      totalHoldsValue += totalHold;
+      
+      if (available === 0) {
+        outOfStockCount++;
+      } else if (available <= (p.reorderLevel || 5)) {
+        lowStockCount++;
+      } else {
+        inStockCount++;
+      }
+    });
     
     const categories = [...new Set(products.map(p => p.category || 'uncategorized'))];
     const categoryDistribution = products.reduce((acc, p) => {
@@ -51,7 +70,11 @@ export default function SimpleAnalyticsDashboard({ products = [], setProducts, s
 
     return {
       totalProducts,
-      totalStock,
+      totalStock: totalStockValue,
+      totalHolds: totalHoldsValue,
+      lowStockCount,
+      outOfStockCount,
+      inStockCount,
       categories,
       categoryDistribution,
       productsWithDelivery,
@@ -240,7 +263,7 @@ export default function SimpleAnalyticsDashboard({ products = [], setProducts, s
           </div>
         </div>
 
-        {/* Total Stock */}
+        {/* Total Available Stock */}
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
           <div className="flex items-center justify-between">
             <div>
@@ -251,38 +274,77 @@ export default function SimpleAnalyticsDashboard({ products = [], setProducts, s
           </div>
           <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
             <Eye size={16} />
-            <span>After holds</span>
+            <span>{analytics.inStockCount} in stock</span>
           </div>
         </div>
 
-        {/* Products with Delivery Info */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+        {/* Low Stock Alert */}
+        <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-6 border border-yellow-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Products with Delivery</p>
-              <p className="text-3xl font-bold text-gray-900">{analytics.productsWithDelivery}</p>
+              <p className="text-sm text-gray-600">Low Stock Products</p>
+              <p className="text-3xl font-bold text-gray-900">{analytics.lowStockCount}</p>
             </div>
-            <Truck size={40} className="text-purple-500" />
+            <AlertTriangle size={40} className="text-yellow-600" />
           </div>
-          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-            <Clock size={16} />
-            <span>{((analytics.productsWithDelivery / analytics.totalProducts) * 100).toFixed(1)}% of products</span>
+          <div className="mt-4 flex items-center gap-2 text-sm text-yellow-700">
+            <TrendingDown size={16} />
+            <span>Needs reorder</span>
           </div>
+        </div>
+
+        {/* Out of Stock */}
+        <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border border-red-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Out of Stock</p>
+              <p className="text-3xl font-bold text-gray-900">{analytics.outOfStockCount}</p>
+            </div>
+            <AlertTriangle size={40} className="text-red-500" />
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-sm text-red-700">
+            <Package size={16} />
+            <span>Critical attention needed</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Stock Info Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Holds */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Stock on Hold</p>
+              <p className="text-2xl font-bold text-gray-900">{analytics.totalHolds}</p>
+            </div>
+            <Clock size={32} className="text-orange-500" />
+          </div>
+          <p className="mt-2 text-sm text-gray-500">Items reserved in customer holds</p>
+        </div>
+
+        {/* Products with Delivery */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Products with Delivery Info</p>
+              <p className="text-2xl font-bold text-gray-900">{analytics.productsWithDelivery}</p>
+            </div>
+            <Truck size={32} className="text-purple-500" />
+          </div>
+          <p className="mt-2 text-sm text-gray-500">{((analytics.productsWithDelivery / analytics.totalProducts) * 100).toFixed(1)}% of catalog</p>
         </div>
 
         {/* Products with Images */}
-        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 border border-orange-100">
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Products with Images</p>
-              <p className="text-3xl font-bold text-gray-900">{analytics.productsWithImages}</p>
+              <p className="text-2xl font-bold text-gray-900">{analytics.productsWithImages}</p>
             </div>
-            <Star size={40} className="text-orange-500" />
+            <Star size={32} className="text-blue-500" />
           </div>
-          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-            <Eye size={16} />
-            <span>{((analytics.productsWithImages / analytics.totalProducts) * 100).toFixed(1)}% of products</span>
-          </div>
+          <p className="mt-2 text-sm text-gray-500">{((analytics.productsWithImages / analytics.totalProducts) * 100).toFixed(1)}% of catalog</p>
         </div>
       </div>
 

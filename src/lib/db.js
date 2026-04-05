@@ -39,6 +39,7 @@ const productSchema = new mongoose.Schema(
     description:     { type: String, default: '' },
     images:          { type: [String], default: [] },
     availableQuantity: { type: String, default: '' },
+    totalQuantity: { type: Number, default: 0 },
     size:            { type: String, default: '' },
     pcsPerCarton:    { type: String, default: '' },
     

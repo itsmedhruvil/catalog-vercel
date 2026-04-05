@@ -9,8 +9,14 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
   const defaultCategory = categories.length > 0 ? categories[0] : 'uncategorized'
   const [form, setForm] = useState(
     product
-      ? { ...product, availableQuantity: product.availableQuantity ?? '', size: product.size ?? '', pcsPerCarton: product.pcsPerCarton ?? '' }
-      : { name: '', price: '', category: defaultCategory, description: '', images: [], availableQuantity: '', size: '', pcsPerCarton: '' }
+      ? { 
+          ...product, 
+          // Use totalQuantity as the single source of truth for stock
+          totalQuantity: product.totalQuantity ?? product.availableQuantity ?? '', 
+          size: product.size ?? '', 
+          pcsPerCarton: product.pcsPerCarton ?? '' 
+        }
+      : { name: '', price: '', category: defaultCategory, description: '', images: [], totalQuantity: '', size: '', pcsPerCarton: '' }
   )
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -197,18 +203,23 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
               </div>
             </div>
 
-            {/* Available Quantity */}
+            {/* Total Quantity (Stock) */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Available Quantity</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Total Stock Quantity *
+              </label>
               <input
                 type="number"
-                name="availableQuantity"
-                value={form.availableQuantity}
+                name="totalQuantity"
+                value={form.totalQuantity}
                 onChange={handleChange}
-                placeholder="Total items in stock"
+                placeholder="Total items in stock (e.g., 100)"
                 min="0"
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                This is the total available stock. Stock will be reduced when orders are confirmed.
+              </p>
             </div>
 
             {/* Delivery Time */}

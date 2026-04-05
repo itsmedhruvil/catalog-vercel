@@ -15,17 +15,30 @@ export default function OrderReceiptPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(true);
+  const [isCustomer, setIsCustomer] = useState(false);
 
   useEffect(() => {
-    // Check if user is in admin mode using persistent state
+    // Check admin state
     const checkAdmin = () => {
       const adminEnabled = isAdminMode();
       setIsAdmin(adminEnabled);
-      
-      if (!adminEnabled) {
-        // Redirect to main catalog if not in admin mode
-        router.push('/');
+    };
+    
+    // Check if this is a customer viewing their own order
+    const checkCustomerAccess = () => {
+      // Allow access if coming from checkout (order confirmation)
+      const referrer = document.referrer;
+      if (referrer && (referrer.includes('/checkout') || referrer.includes('/orders/'))) {
+        setIsCustomer(true);
+        return true;
       }
+      // Check sessionStorage for order access token (set after checkout)
+      const recentOrderId = sessionStorage.getItem('lastOrderId');
+      if (recentOrderId && recentOrderId === orderId) {
+        setIsCustomer(true);
+        return true;
+      }
+      return false;
     };
     
     // Fetch order data
@@ -42,11 +55,20 @@ export default function OrderReceiptPage() {
     };
 
     checkAdmin();
+    
+    // Allow access for admin or customer
+    if (!checkCustomerAccess() && !isAdmin) {
+      // Redirect non-admin, non-customer users to catalog
+      router.push('/catalog');
+      return;
+    }
+    
     loadOrder();
   }, [router, orderId]);
 
-  if (!isAdmin) {
-    return null; // Will redirect automatically in useEffect
+  // Allow access for admin or customer
+  if (!isAdmin && !isCustomer) {
+    return null; // Will redirect in useEffect
   }
 
   if (loading) {
@@ -67,10 +89,10 @@ export default function OrderReceiptPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
           <p className="text-gray-600 mb-6">The order you're looking for doesn't exist or has been deleted.</p>
           <button
-            onClick={() => router.push('/orders')}
+            onClick={() => router.push('/catalog')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Back to Orders
+            Back to Catalog
           </button>
         </div>
       </div>
@@ -93,12 +115,6 @@ export default function OrderReceiptPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const calculateTotals = () => {
-    const subtotal = order.items.reduce((sum, item) => sum + item.totalPrice, 0);
-    const total = subtotal + order.tax + order.shipping - order.discount;
-    return { subtotal, total };
   };
 
   const handlePrint = () => {
@@ -124,12 +140,12 @@ export default function OrderReceiptPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 print:hidden">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push(`/orders/${orderId}`)}
+                onClick={() => router.push(isAdmin ? '/orders' : '/catalog')}
                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft size={24} />
@@ -247,7 +263,7 @@ export default function OrderReceiptPage() {
                     {item.productImage ? (
                       <img src={item.productImage} alt="" className="w-full h-full object-cover rounded-lg" />
                     ) : (
-                      <span className="text-gray-400">No Image</span>
+                      <span className="text-gray-400 text-xs">No Image</span>
                     )}
                   </div>
                   
@@ -279,7 +295,7 @@ export default function OrderReceiptPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>Subtotal:</span>
-              <span>{formatCurrency(calculateTotals().subtotal)}</span>
+              <span>{formatCurrency(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
               <span>Tax:</span>
@@ -363,11 +379,26 @@ export default function OrderReceiptPage() {
         )}
 
         {/* Footer */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 text-center">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 text-center print:break-inside-avoid">
           <p className="text-gray-600 mb-2">Thank you for your business!</p>
           <p className="text-sm text-gray-500">For any questions about this order, please contact our support team.</p>
         </div>
       </main>
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          body {
+            background: white;
+          }
+          .print:hidden {
+            display: none !important;
+          }
+          .print:break-inside-avoid {
+            break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }

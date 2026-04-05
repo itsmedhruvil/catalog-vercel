@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readOrders, createOrder, getOrderAnalytics } from '@/lib/orderSchema'
+import { readOrders, createOrder, getOrderAnalytics, checkProductAvailability } from '@/lib/orderSchema'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,10 +67,39 @@ export async function POST(request) {
       }
     }
 
-    const order = await createOrder(data)
-    return Response.json(order, { status: 201 })
+    // Check product availability (stock validation)
+    // This is a warning check - we still allow the order but notify about stock issues
+    const availabilityIssues = await checkProductAvailability(data.items);
+    
+    // Create the order regardless of stock availability
+    // Stock is reduced immediately when order is placed (not just when confirmed)
+    // to prevent overselling
+    const order = await createOrder(data);
+    
+    // Reduce stock immediately for all orders (not just confirmed ones)
+    // This prevents overselling and keeps inventory accurate
+    if (order.items && order.items.length > 0) {
+      const { reduceProductStock } = await import('@/lib/orderSchema');
+      for (const item of order.items) {
+        await reduceProductStock(
+          item.productId,
+          item.quantity,
+          `Order ${order.orderNumber} placed`,
+          order._id,
+          order.orderNumber
+        );
+      }
+    }
+    
+    // Return order with availability warnings if any
+    const response = {
+      ...order,
+      _availabilityWarnings: availabilityIssues.length > 0 ? availabilityIssues : undefined
+    };
+    
+    return Response.json(response, { status: 201 });
   } catch (err) {
-    console.error('API error:', err)
-    return Response.json({ error: err.message }, { status: 500 })
+    console.error('API error:', err);
+    return Response.json({ error: err.message }, { status: 500 });
   }
 }

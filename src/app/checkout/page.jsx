@@ -53,9 +53,67 @@ export default function CheckoutPage() {
     orderType: 'online'
   })
 
-  const [tax, setTax] = useState(0)
-  const [shipping, setShipping] = useState(0)
-  const [discount, setDiscount] = useState(0)
+  // Shipping rates configuration
+  const SHIPPING_RATES = {
+    standard: { baseRate: 50, freeThreshold: 500 },    // Free shipping above ₹500
+    express: { baseRate: 120, freeThreshold: 1000 },   // Free shipping above ₹1000
+    pickup: { baseRate: 0, freeThreshold: 0 }          // Always free
+  }
+
+  // Tax rate (GST - 18%)
+  const TAX_RATE = 0.18
+
+  // Discount tiers (auto-applied based on subtotal)
+  const DISCOUNT_TIERS = [
+    { threshold: 5000, percentage: 0.10 },   // 10% off above ₹5000
+    { threshold: 3000, percentage: 0.05 },   // 5% off above ₹3000
+    { threshold: 1000, percentage: 0.02 }    // 2% off above ₹1000
+  ]
+
+  // Calculate shipping based on delivery method and subtotal
+  const calculateShipping = () => {
+    const method = formData.delivery.method
+    const rate = SHIPPING_RATES[method] || SHIPPING_RATES.standard
+    return subtotal >= rate.freeThreshold ? 0 : rate.baseRate
+  }
+
+  // Calculate tax (18% GST)
+  const calculateTax = () => {
+    return Math.round(subtotal * TAX_RATE)
+  }
+
+  // Calculate auto-discount based on subtotal
+  const calculateDiscount = () => {
+    for (const tier of DISCOUNT_TIERS) {
+      if (subtotal >= tier.threshold) {
+        return Math.round(subtotal * tier.percentage)
+      }
+    }
+    return 0
+  }
+
+  // Get applied discount description
+  const getDiscountDescription = () => {
+    for (const tier of DISCOUNT_TIERS) {
+      if (subtotal >= tier.threshold) {
+        return `${tier.percentage * 100}% auto-discount (Orders above ₹${tier.threshold})`
+      }
+    }
+    return 'No discount applied'
+  }
+
+  // Get shipping description
+  const getShippingDescription = () => {
+    const method = formData.delivery.method
+    const rate = SHIPPING_RATES[method] || SHIPPING_RATES.standard
+    if (method === 'pickup') return 'Store Pickup (Free)'
+    if (subtotal >= rate.freeThreshold) return `Free shipping (Above ₹${rate.freeThreshold})`
+    return `${SHIPPING_RATES[method]?.label || 'Standard'} Shipping`
+  }
+
+  const shipping = calculateShipping()
+  const tax = calculateTax()
+  const discount = calculateDiscount()
 
   useEffect(() => {
     if (cartItems.length === 0 && !isSubmitting) {
@@ -155,8 +213,11 @@ export default function CheckoutPage() {
       const order = await createOrder(orderData)
       clearCart()
       
-      // Redirect to order confirmation
-      router.push(`/orders/${order.id}`)
+      // Store order ID in sessionStorage for customer access to receipt
+      sessionStorage.setItem('lastOrderId', order.id)
+      
+      // Redirect to order confirmation/receipt
+      router.push(`/orders/${order.id}/receipt`)
     } catch (error) {
       console.error('Error creating order:', error)
       alert('Failed to create order. Please try again.')
@@ -471,36 +532,39 @@ export default function CheckoutPage() {
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Tax</span>
-                    <input
-                      type="number"
-                      value={tax}
-                      onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                      className="w-24 text-right border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0"
-                    />
+                    <div>
+                      <span className="text-gray-600">Tax (18% GST)</span>
+                      <p className="text-xs text-gray-400">Auto-calculated</p>
+                    </div>
+                    <span className="text-right font-medium text-gray-900">{formatCurrency(tax)}</span>
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Shipping</span>
-                    <input
-                      type="number"
-                      value={shipping}
-                      onChange={(e) => setShipping(parseFloat(e.target.value) || 0)}
-                      className="w-24 text-right border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0"
-                    />
+                    <div>
+                      <span className="text-gray-600">Shipping</span>
+                      <p className="text-xs text-gray-400">
+                        {shipping === 0 
+                          ? 'Free (Order above threshold)' 
+                          : formData.delivery.method === 'express'
+                            ? 'Express delivery'
+                            : formData.delivery.method === 'pickup'
+                              ? 'Store pickup'
+                              : 'Standard delivery'}
+                      </p>
+                    </div>
+                    <span className={`text-right font-medium ${shipping === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                      {shipping === 0 ? 'Free' : formatCurrency(shipping)}
+                    </span>
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Discount</span>
-                    <input
-                      type="number"
-                      value={discount}
-                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-24 text-right border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0"
-                    />
+                    <div>
+                      <span className="text-gray-600">Discount</span>
+                      <p className="text-xs text-gray-400">{getDiscountDescription()}</p>
+                    </div>
+                    <span className={`text-right font-medium ${discount > 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                      {discount > 0 ? `- ${formatCurrency(discount)}` : formatCurrency(discount)}
+                    </span>
                   </div>
 
                   <div className="border-t border-gray-200 pt-3 flex justify-between items-center">

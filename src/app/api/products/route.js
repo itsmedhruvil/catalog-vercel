@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readProducts, addProduct } from '@/lib/db'
+import { readProducts, addProduct, updateProductById } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,9 +19,11 @@ export async function POST(request) {
   try {
     const data = await request.json()
     
-    // Set default values for new analytics fields
+    // Ensure totalQuantity is properly set (default to 0 if not provided)
+    // This is the single source of truth for stock tracking
     const productData = {
       ...data,
+      totalQuantity: data.totalQuantity !== undefined ? parseInt(data.totalQuantity) || 0 : 0,
       salesLast30Days: data.salesLast30Days || 0,
       salesPrevious30Days: data.salesPrevious30Days || 0,
       totalSales: data.totalSales || 0,

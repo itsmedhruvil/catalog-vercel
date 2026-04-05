@@ -58,6 +58,8 @@ export default function CatalogClient({
   initialSharedIds = [],
   initialFilter = "all",
 }) {
+  const router = useRouter();
+
   // --- LOADERS (Database-only approach) ---
   const loadProducts = () => {
     // No local storage - all data comes from database
@@ -101,7 +103,8 @@ export default function CatalogClient({
   const loadProductsFromDB = useCallback(async () => {
     try {
       const data = await fetchProducts();
-      // Normalize any old data to the new 'holds' array format
+      // Normalize any old data to the new format
+      // totalQuantity is now the single source of truth for stock
       const normalizedData = data.map((p) => {
         let migratedHolds = p.holds || [];
         if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
@@ -113,15 +116,22 @@ export default function CatalogClient({
             },
           ];
         }
+        
+        // Migrate availableQuantity to totalQuantity if needed
+        // totalQuantity is the single source of truth for stock tracking
+        let totalQty = p.totalQuantity;
+        // Check for undefined, null, or 0 (default) - if availableQuantity has a value, use it
+        if (totalQty === undefined || totalQty === null || (totalQty === 0 && p.availableQuantity)) {
+          // Try to use availableQuantity as fallback
+          totalQty = p.availableQuantity !== undefined ? parseInt(p.availableQuantity) || 0 : 0;
+        }
+        
         return {
           ...p,
-          totalQuantity:
-            p.totalQuantity !== undefined
-              ? p.totalQuantity
-              : p.availableQuantity || "",
+          totalQuantity: totalQty,
           holds: migratedHolds,
           stockOnHold: undefined,
-          availableQuantity: undefined,
+          availableQuantity: undefined, // Remove old field
         };
       });
       setProducts(normalizedData);
@@ -415,7 +425,7 @@ export default function CatalogClient({
         selectedCount={selectedProductIds.size}
         isAdminUnlocked={isAdmin}
         sharedIdsLength={sharedIds.length}
-        onNavigate={(path) => (window.location.href = path)}
+        onNavigate={(path) => router.push(path)}
         onToggleAdmin={toggleAdmin}
         onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
         onOpenShareLinks={() => setActiveModal("shareOptions")}
@@ -513,8 +523,8 @@ export default function CatalogClient({
                   if (isSelectionMode) {
                     toggleSelection(product.id);
                   } else {
-                    // Navigate to product page instead of opening modal
-                    window.location.href = `/product/${product.id}`;
+                    // Navigate to product page using Next.js router for proper history
+                    router.push(`/product/${product.id}`);
                   }
                 }}
                 onEdit={() => {
