@@ -94,6 +94,54 @@ export async function fetchOrderAnalytics() {
   return res.json()
 }
 
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+export async function fetchCustomers(query) {
+  const url = query 
+    ? `/api/customers?q=${encodeURIComponent(query)}`
+    : '/api/customers'
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to load customers')
+  return res.json()
+}
+
+export async function fetchCustomerById(id) {
+  const res = await fetch(`/api/customers/${id}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to load customer')
+  return res.json()
+}
+
+export async function createCustomer(data) {
+  const res = await fetch('/api/customers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to create customer')
+  return res.json()
+}
+
+export async function updateCustomer(id, data) {
+  const res = await fetch(`/api/customers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to update customer')
+  return res.json()
+}
+
+export async function deleteCustomer(id) {
+  const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete customer')
+}
+
+export async function searchCustomers(query) {
+  const res = await fetch(`/api/customers?q=${encodeURIComponent(query)}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to search customers')
+  return res.json()
+}
+
 // ─── Image upload ─────────────────────────────────────────────────────────────
 
 export async function uploadImage(file) {

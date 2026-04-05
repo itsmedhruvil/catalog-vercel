@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { Product } from './db.js'
 
 // ─── Order Schema ─────────────────────────────────────────────────────────────
 const orderSchema = new mongoose.Schema(
@@ -208,30 +209,101 @@ export async function createOrder(data) {
 export async function updateOrderById(id, updates) {
   await connectDB()
   
-  // If status is being updated, add to status history
-  let updateData = { ...updates }
-  if (updates.orderStatus) {
-    updateData.$push = {
-      statusHistory: {
-        status: updates.orderStatus,
-        notes: updates.statusNotes || `Status updated to ${updates.orderStatus}`,
-        updatedBy: updates.updatedBy || 'admin'
-      }
-    }
-    delete updateData.statusNotes
-    delete updateData.updatedBy
-  }
-  
   try {
+    // Create a copy of updates without special fields and without statusHistory
+    // (statusHistory is managed automatically, not manually updated)
+    const { statusNotes, updatedBy, statusHistory, ...fieldUpdates } = updates
+    
+    // Get the current order to check if status is changing
+    const currentOrder = await Order.findById(id);
+    
+    // Build the update object with proper MongoDB operators
+    const updateOps = {
+      $set: { ...fieldUpdates }
+    }
+    
+    // Track if we need to reduce stock (when status changes to 'confirmed')
+    const isStatusChangingToConfirmed = updates.orderStatus === 'confirmed' && 
+                                         currentOrder && 
+                                         currentOrder.orderStatus !== 'confirmed';
+    
+    // Track activity for logging
+    const activities = [];
+    
+    // If status is being updated, add to status history
+    if (updates.orderStatus) {
+      updateOps.$push = {
+        statusHistory: {
+          status: updates.orderStatus,
+          notes: statusNotes || `Status updated to ${updates.orderStatus}`,
+          updatedBy: updatedBy || 'admin',
+          date: new Date()
+        }
+      }
+      
+      activities.push({
+        type: 'status_change',
+        from: currentOrder?.orderStatus,
+        to: updates.orderStatus,
+        notes: statusNotes || `Status updated to ${updates.orderStatus}`,
+        updatedBy: updatedBy || 'admin',
+        timestamp: new Date()
+      });
+    }
+    
+    // Execute the order update
     const order = await Order.findByIdAndUpdate(
       id,
-      updateData,
+      updateOps,
       { new: true, runValidators: true }
-    ).populate('items.productId', 'name images')
+    ).populate('items.productId', 'name images');
     
-    return order ? order.toJSON() : null
-  } catch {
-    return null
+    if (!order) return null;
+    
+    // If order was confirmed, reduce stock for each item
+    if (isStatusChangingToConfirmed && order.items) {
+      const bulkOps = order.items.map(item => ({
+        updateOne: {
+          filter: { _id: item.productId },
+          $inc: { totalQuantity: -item.quantity },
+          $push: {
+            activityLog: {
+              type: 'stock_reduction',
+              quantity: -item.quantity,
+              reason: `Order ${order.orderNumber} confirmed`,
+              orderId: order._id,
+              timestamp: new Date()
+            }
+          }
+        }
+      }));
+      
+      if (bulkOps.length > 0) {
+        await Product.bulkWrite(bulkOps);
+        
+        activities.push({
+          type: 'stock_updated',
+          items: order.items.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantityReduced: item.quantity
+          })),
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          timestamp: new Date()
+        });
+      }
+    }
+    
+    // Log activities to console (in production, this could go to a dedicated activity log collection)
+    if (activities.length > 0) {
+      console.log('Order Activity Log:', JSON.stringify(activities, null, 2));
+    }
+    
+    return order ? order.toJSON() : null;
+  } catch (error) {
+    console.error('Error updating order:', error);
+    return null;
   }
 }
 

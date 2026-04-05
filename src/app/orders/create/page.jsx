@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Save, X, User, Mail, Phone, MapPin, CreditCard, Truck, Calendar, Package, Search, PlusCircle, Trash2, MinusCircle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Plus, Save, X, User, Mail, Phone, MapPin, CreditCard, Truck, Calendar, Package, Search, PlusCircle, Trash2, MinusCircle, Eye, EyeOff, Users } from "lucide-react";
 import { isAdminMode } from "@/lib/admin";
 import { fetchProducts, createOrder } from "@/lib/api";
 
@@ -10,7 +10,11 @@ export default function CreateOrderPage() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   
   // Form state
   const [orderData, setOrderData] = useState({
@@ -49,6 +53,111 @@ export default function CreateOrderPage() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Load customers for auto-fill
+  const loadCustomers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/customers');
+      if (res.ok) {
+        const data = await res.json();
+        setCustomers(data);
+      }
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    }
+  }, []);
+
+  // Check for prefill customer from localStorage (from clients page)
+  useEffect(() => {
+    const prefillData = localStorage.getItem('prefillCustomer');
+    if (prefillData) {
+      try {
+        const customer = JSON.parse(prefillData);
+        fillCustomerData(customer);
+        localStorage.removeItem('prefillCustomer');
+      } catch (e) {
+        console.error('Error parsing prefill customer:', e);
+      }
+    }
+  }, []);
+
+  // Load customers on mount
+  useEffect(() => {
+    loadCustomers();
+  }, [loadCustomers]);
+
+  // Fill customer data from existing customer record
+  const fillCustomerData = (customer) => {
+    setSelectedCustomer(customer);
+    
+    // Get primary address
+    const primaryAddress = customer.addresses?.find(a => a.isDefault) || customer.addresses?.[0];
+    
+    setOrderData(prev => ({
+      ...prev,
+      customer: {
+        name: customer.name || '',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        address: {
+          street: primaryAddress?.street || '',
+          city: primaryAddress?.city || '',
+          state: primaryAddress?.state || '',
+          zipCode: primaryAddress?.zipCode || '',
+          country: primaryAddress?.country || 'India'
+        }
+      },
+      // Auto-fill preferences
+      payment: {
+        ...prev.payment,
+        method: customer.preferredPaymentMethod || prev.payment.method
+      },
+      delivery: {
+        ...prev.delivery,
+        method: customer.preferredDeliveryMethod || prev.delivery.method
+      }
+    }));
+    
+    setShowAddressForm(!!primaryAddress);
+  };
+
+  // Clear selected customer
+  const clearSelectedCustomer = () => {
+    setSelectedCustomer(null);
+    setOrderData(prev => ({
+      ...prev,
+      customer: {
+        name: '',
+        email: '',
+        phone: '',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: 'India'
+        }
+      }
+    }));
+  };
+
+  // Search customers
+  const searchCustomers = async (query) => {
+    setCustomerSearchQuery(query);
+    if (query.trim()) {
+      try {
+        const res = await fetch(`/api/customers?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCustomers(data);
+        }
+      } catch (error) {
+        console.error('Error searching customers:', error);
+      }
+    } else {
+      loadCustomers();
+    }
+  };
 
   // Order status and payment options
   const PAYMENT_METHODS = [
@@ -328,7 +437,90 @@ export default function CreateOrderPage() {
             </div>
             
             <div className="space-y-4">
+              {/* Customer Search */}
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Search Existing Customer</label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    value={customerSearchQuery}
+                    onChange={(e) => searchCustomers(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Search by name, email, phone..."
+                  />
+                  {customerSearchQuery && (
+                    <button
+                      onClick={() => searchCustomers('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Customer Search Results */}
+                {customerSearchQuery && customers.length > 0 && (
+                  <div className="mt-2 border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-white shadow-lg z-10 relative">
+                    {customers.map(customer => (
+                      <button
+                        key={customer.id}
+                        onClick={() => {
+                          fillCustomerData(customer);
+                          setCustomerSearchQuery('');
+                          setCustomers([]);
+                        }}
+                        className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <span className="text-green-600 font-semibold text-sm">
+                              {customer.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm">{customer.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{customer.email}</p>
+                          </div>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            customer.customerType === 'vip' ? 'bg-purple-100 text-purple-700' :
+                            customer.customerType === 'corporate' ? 'bg-amber-100 text-amber-700' :
+                            customer.customerType === 'wholesale' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {customer.customerType}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Customer Badge */}
+              {selectedCustomer && (
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-green-200 rounded-full flex items-center justify-center">
+                      <span className="text-green-700 font-semibold text-xs">
+                        {selectedCustomer.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-green-800">{selectedCustomer.name}</p>
+                      <p className="text-xs text-green-600">{selectedCustomer.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={clearSelectedCustomer}
+                    className="text-green-600 hover:text-green-800"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              <div className="border-t border-gray-200 pt-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />

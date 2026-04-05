@@ -121,7 +121,18 @@ export default function OrderDetailsPage() {
 
   const handleSave = async () => {
     try {
-      const updatedOrder = await updateOrder(orderId, editData);
+      // Clean up the data before sending to API
+      // Remove populated product data from items to avoid cast errors
+      const cleanEditData = {
+        ...editData,
+        items: editData.items?.map(item => ({
+          ...item,
+          // Only send productId as string, not the populated object
+          productId: typeof item.productId === 'string' ? item.productId : item.productId?._id || item.productId?.id
+        }))
+      };
+      
+      const updatedOrder = await updateOrder(orderId, cleanEditData);
       setOrder(updatedOrder);
       setEditData(updatedOrder);
       setIsEditing(false);
@@ -167,6 +178,66 @@ export default function OrderDetailsPage() {
         [field]: value
       }
     }));
+  };
+
+  // Order Actions Handlers
+  const handlePrintInvoice = () => {
+    // Open receipt page in new window for printing
+    window.open(`/orders/${orderId}/receipt`, '_blank');
+  };
+
+  const handleExportPDF = () => {
+    // Open receipt page in new window with print dialog
+    const printWindow = window.open(`/orders/${orderId}/receipt?print=true`, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+    }
+  };
+
+  const handleSendEmail = () => {
+    // Open email client with order details
+    const subject = encodeURIComponent(`Invoice for Order #${order.orderNumber}`);
+    const body = encodeURIComponent(
+      `Dear ${order.customer.name},\n\n` +
+      `Thank you for your order. Please find your order details below:\n\n` +
+      `Order Number: ${order.orderNumber}\n` +
+      `Order Date: ${formatDate(order.orderDate)}\n` +
+      `Total Amount: ${formatCurrency(order.totalAmount)}\n\n` +
+      `If you have any questions, please don't hesitate to contact us.\n\n` +
+      `Best regards,\n` +
+      `Your Company`
+    );
+    window.location.href = `mailto:${order.customer.email}?subject=${subject}&body=${body}`;
+  };
+
+  const handleCancelOrder = async () => {
+    if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Clean up the data before sending to API
+      const cleanEditData = {
+        ...editData,
+        orderStatus: 'cancelled',
+        items: editData.items?.map(item => ({
+          ...item,
+          productId: typeof item.productId === 'string' ? item.productId : item.productId?._id || item.productId?.id
+        }))
+      };
+      
+      const updatedOrder = await updateOrder(orderId, cleanEditData);
+      setOrder(updatedOrder);
+      setEditData(updatedOrder);
+      alert('Order cancelled successfully');
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      alert('Failed to cancel order. Please try again.');
+    }
   };
 
   const getStatusColor = (status) => {
@@ -736,19 +807,31 @@ export default function OrderDetailsPage() {
           <div className="bg-white rounded-xl p-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Actions</h3>
             <div className="flex flex-wrap gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button
+                onClick={handlePrintInvoice}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 <Printer size={18} />
                 Print Invoice
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
                 <Download size={18} />
                 Export PDF
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+              <button
+                onClick={handleSendEmail}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
                 <Mail size={18} />
                 Send Email
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+              <button
+                onClick={handleCancelOrder}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
                 <Trash2 size={18} />
                 Cancel Order
               </button>

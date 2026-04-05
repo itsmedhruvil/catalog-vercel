@@ -52,6 +52,7 @@ import LightboxModal from "./LightboxModal";
 import AdvancedDashboard from "./AdvancedDashboard";
 import InventoryAlerts from "./InventoryAlerts";
 import DeliveryManagementModal from "./DeliveryManagementModal";
+import OffCanvasMenu from "./OffCanvasMenu";
 
 export default function CatalogClient({
   initialSharedIds = [],
@@ -84,6 +85,9 @@ export default function CatalogClient({
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
+
+  // Off-canvas menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Modals
   const [activeModal, setActiveModal] = useState(null);
@@ -378,102 +382,45 @@ export default function CatalogClient({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Analytics & Admin Tools */}
-          {sharedIds.length === 0 && isAdmin && (
-            <>
-              {/* Orders Management */}
-              <button
-                onClick={() => window.location.href = '/orders'}
-                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-                title="Orders Management"
-              >
-                <ShoppingCart size={22} />
-              </button>
-              
-              {/* Analytics Dashboard */}
-              <button
-                onClick={() => window.location.href = '/analytics'}
-                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-                title="Analytics Dashboard"
-              >
-                <BarChart3 size={22} />
-              </button>
-              
-              {/* Inventory Alerts */}
-              <button
-                onClick={() => window.location.href = '/alerts'}
-                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-                title="Inventory Alerts"
-              >
-                <Bell size={22} />
-              </button>
-              
-              {/* Delivery Management */}
-              <button
-                onClick={() => window.location.href = '/delivery'}
-                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-                title="Delivery Management"
-              >
-                <Truck size={22} />
-              </button>
-            </>
-          )}
-
-          {/* Viewers & Admin Tools */}
-          {isSelectionMode ? (
-            <>
-              <button
-                onClick={() => setIsSelectionMode(false)}
-                className="p-2 text-gray-500 bg-gray-100 rounded-full"
-              >
-                <X size={20} />
-              </button>
-              {selectedProductIds.size > 0 && (
-                <button
-                  onClick={() => setActiveModal("shareConfig")}
-                  className="p-2 text-white bg-blue-600 rounded-full flex items-center gap-1 px-4 font-medium"
-                >
-                  <Share2 size={18} />
-                  Share ({selectedProductIds.size})
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              {sharedIds.length === 0 && isAdmin && (
-                <button
-                  onClick={() => setActiveModal("shareOptions")}
-                  className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-                  title="Share Links"
-                >
-                  <LinkIcon size={22} />
-                </button>
-              )}
-              <button
-                onClick={() => setIsSelectionMode(true)}
-                className="p-2 text-gray-700 hover:bg-gray-100 rounded-full"
-                title="Select Products to Share"
-              >
-                <CheckCircle2 size={22} />
-              </button>
-            </>
-          )}
-
-          {/* Admin Toggle Button */}
-          <button
-            onClick={toggleAdmin}
-            className={`p-2 rounded-full border transition-colors ${
-              isAdmin
-                ? "bg-green-50 text-green-600 border-green-200"
-                : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
-            }`}
-            title={isAdmin ? "Lock Admin" : "Unlock Admin"}
+        {/* Menu Button */}
+        <button
+          onClick={() => setIsMenuOpen(true)}
+          className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+          title="Open Menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {isAdmin ? <Unlock size={18} /> : <Lock size={18} />}
-          </button>
-        </div>
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
       </header>
+
+      {/* OFF-CANVAS MENU */}
+      <OffCanvasMenu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        isAdmin={isAdmin}
+        isSelectionMode={isSelectionMode}
+        selectedCount={selectedProductIds.size}
+        isAdminUnlocked={isAdmin}
+        sharedIdsLength={sharedIds.length}
+        onNavigate={(path) => (window.location.href = path)}
+        onToggleAdmin={toggleAdmin}
+        onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
+        onOpenShareLinks={() => setActiveModal("shareOptions")}
+        onOpenShareConfig={() => setActiveModal("shareConfig")}
+      />
 
       {/* SEARCH BAR */}
       <div className="bg-white px-4 py-3 border-b border-gray-100">

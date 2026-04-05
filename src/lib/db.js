@@ -86,6 +86,17 @@ const productSchema = new mongoose.Schema(
     tags:              { type: [String], default: [] },
     priority:          { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
     isFeatured:        { type: Boolean, default: false },
+    
+    // Activity Log for tracking stock changes and other events
+    activityLog: [{
+      type: { type: String, enum: ['stock_reduction', 'stock_increase', 'order_confirmed', 'order_cancelled', 'manual_adjustment'], default: 'manual_adjustment' },
+      quantity: { type: Number, default: 0 },
+      reason: { type: String, default: '' },
+      orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+      orderNumber: { type: String },
+      timestamp: { type: Date, default: Date.now },
+      updatedBy: { type: String, default: 'system' }
+    }],
   },
   {
     timestamps: true,
@@ -102,6 +113,9 @@ const productSchema = new mongoose.Schema(
 )
 
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema)
+
+// Export Product for use in other modules (like orderSchema.js)
+export { Product }
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 

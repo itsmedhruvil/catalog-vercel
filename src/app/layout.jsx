@@ -1,4 +1,6 @@
 import './globals.css'
+import { CartProvider } from '@/context/CartContext'
+import CartSidebar from '@/components/CartSidebar'
 
 export const metadata = {
   title: 'Product Catalog',
@@ -9,7 +11,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 font-inter antialiased">
-        {children}
+        <CartProvider>
+          {children}
+          <CartSidebar />
+        </CartProvider>
       </body>
     </html>
   )

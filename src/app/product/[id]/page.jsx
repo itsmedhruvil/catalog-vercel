@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProductImageGallery from '@/components/ProductImageGallery'
 import ProductDetails from '@/components/ProductDetails'
+import AddToCartButton from '@/components/AddToCartButton'
 import InquiryButton from '@/components/InquiryButton'
+import ProductQuickActions from '@/components/ProductQuickActions'
 import { getProductById } from '@/lib/db'
 
 export default async function ProductPage({ params }) {
@@ -43,15 +45,25 @@ export default async function ProductPage({ params }) {
               />
             </div>
 
-            {/* Right Column: Product Details */}
+            {/* Right Column: Product Details + Add to Cart */}
             <div className="space-y-6">
               <ProductDetails product={product} />
+              
+              {/* Add to Cart Section */}
+              <AddToCartButton product={product} variant="default" />
             </div>
           </div>
 
-          {/* Inquiry Section - Full Width */}
-          <div className="mt-8">
+          {/* Action Buttons Section - Full Width */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Inquiry Button */}
             <InquiryButton productName={product.name} />
+            
+            {/* Quick Actions */}
+            <ProductQuickActions 
+              productName={product.name} 
+              productId={product.id}
+            />
           </div>
         </div>
       </div>
