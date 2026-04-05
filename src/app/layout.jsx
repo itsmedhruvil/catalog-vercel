@@ -1,6 +1,7 @@
 import './globals.css'
 import { CartProvider } from '@/context/CartContext'
 import CartSidebar from '@/components/CartSidebar'
+import FloatingCartButton from '@/components/FloatingCartButton'
 
 export const metadata = {
   title: 'Product Catalog',
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
         <CartProvider>
           {children}
           <CartSidebar />
+          <FloatingCartButton />
         </CartProvider>
       </body>
     </html>
