@@ -7,8 +7,12 @@ import {
   Bell,
   Truck,
   Users,
+  Package,
+  LogIn,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useUser } from "@clerk/nextjs";
+import { useMemo } from "react";
 
 export default function OffCanvasMenu({
   isOpen,
@@ -20,6 +24,8 @@ export default function OffCanvasMenu({
 }) {
   const { cartTotals, openCart } = useCart();
   const { itemCount } = cartTotals();
+  const { isSignedIn } = useUser();
+  const isUserSignedIn = useMemo(() => isSignedIn && !isAdmin, [isSignedIn, isAdmin]);
   return (
     <>
       {/* Overlay */}
@@ -67,6 +73,50 @@ export default function OffCanvasMenu({
                 )}
               </MenuButton>
             </div>
+          )}
+
+          {/* User Tools Section - Order History */}
+          {isUserSignedIn && sharedIdsLength === 0 && (
+            <>
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+                  My Account
+                </p>
+                <div className="space-y-1">
+                  <MenuButton
+                    icon={<Package size={20} />}
+                    label="My Orders"
+                    onClick={() => {
+                      onNavigate("/orders");
+                      onClose();
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Sign In Prompt for non-authenticated users */}
+          {!isSignedIn && !isAdmin && (
+            <>
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
+                  Account
+                </p>
+                <div className="space-y-1">
+                  <a
+                    href="/sign-in"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <LogIn size={20} />
+                    <span className="font-medium">Sign In</span>
+                  </a>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 px-3">
+                  Sign in to view orders, pricing, and place orders
+                </p>
+              </div>
+            </>
           )}
 
           {/* Admin Tools Section */}

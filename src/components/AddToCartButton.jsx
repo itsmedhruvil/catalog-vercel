@@ -1,21 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { ShoppingCart, Check, MinusCircle, PlusCircle } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { useUser } from '@clerk/nextjs'
+import LoginRequiredModal from './LoginRequiredModal'
 
 export default function AddToCartButton({ product, variant = 'default', className = '' }) {
   const { addToCart, removeFromCart, updateQuantity, cartItems } = useCart()
   const [quantity, setQuantity] = useState(1)
   const [showQuantity, setShowQuantity] = useState(false)
   const { isSignedIn } = useUser()
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
-  useEffect(() => {
-    // Check initial admin state based on Clerk sign-in status
-    setIsAdmin(isSignedIn)
-  }, [isSignedIn])
+  // Use useMemo to prevent unnecessary re-renders
+  const isAdmin = useMemo(() => isSignedIn, [isSignedIn])
 
   // Don't show add to cart button for admins (signed in users)
   if (isAdmin) return null
@@ -35,6 +34,12 @@ export default function AddToCartButton({ product, variant = 'default', classNam
   const handleAddToCart = (e) => {
     e.stopPropagation()
     e.preventDefault()
+    
+    // Check if user is signed in
+    if (!isSignedIn) {
+      setShowLoginModal(true)
+      return
+    }
     
     if (isSoldOut) return
     
@@ -64,7 +69,26 @@ export default function AddToCartButton({ product, variant = 'default', classNam
 
   // Don't show for sold out items in some variants
   if (isSoldOut && variant === 'icon-only') {
-    return null
+    return (
+      <>
+        <button
+          disabled
+          className={`absolute bottom-2 right-2 p-2 rounded-full shadow-lg ${
+            isSoldOut
+              ? 'bg-gray-300 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700 text-white'
+          } ${className}`}
+          title="Sold Out"
+        >
+          <ShoppingCart size={16} />
+        </button>
+        <LoginRequiredModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          feature="order"
+        />
+      </>
+    )
   }
 
   // Icon-only variant (for product cards)
@@ -151,7 +175,8 @@ export default function AddToCartButton({ product, variant = 'default', classNam
   }
 
   return (
-    <div className="space-y-4">
+    <>
+      <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700">Quantity:</label>
@@ -193,5 +218,11 @@ export default function AddToCartButton({ product, variant = 'default', classNam
         {isSoldOut ? 'Sold Out' : 'Add to Cart'}
       </button>
     </div>
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        feature="order"
+      />
+    </>
   )
 }

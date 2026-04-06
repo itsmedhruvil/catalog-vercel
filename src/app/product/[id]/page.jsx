@@ -3,8 +3,7 @@ import Link from 'next/link'
 import ProductImageGallery from '@/components/ProductImageGallery'
 import ProductDetails from '@/components/ProductDetails'
 import AddToCartButton from '@/components/AddToCartButton'
-import InquiryButton from '@/components/InquiryButton'
-import ProductQuickActions from '@/components/ProductQuickActions'
+import ProductPageActions from '@/components/ProductPageActions'
 import { getProductById } from '@/lib/db'
 import { isAdminMode } from '@/lib/admin'
 import { Edit2 } from 'lucide-react'
@@ -71,16 +70,10 @@ export default async function ProductPage({ params }) {
           </div>
 
           {/* Action Buttons Section - Full Width */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Inquiry Button */}
-            <InquiryButton productName={product.name} />
-            
-            {/* Quick Actions */}
-            <ProductQuickActions 
-              productName={product.name} 
-              productId={product.id}
-            />
-          </div>
+          <ProductPageActions 
+            productName={product.name}
+            productId={product.id}
+          />
         </div>
       </div>
     )

@@ -90,6 +90,7 @@ export default function CatalogClient({
   const { isSignedIn, user } = useUser();
   const { hasAdminAccess } = useAdminAuth();
   const isAdmin = hasAdminAccess;
+  const isUserSignedIn = isSignedIn && !isAdmin; // Regular user (not admin)
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
 
@@ -102,7 +103,8 @@ export default function CatalogClient({
   const [toastMessage, setToastMessage] = useState("");
 
   // Admins always override the 'hide price' setting
-  const effectiveHidePrice = hidePrice && !hasAdminAccess;
+  // Unauthenticated users also don't see price
+  const effectiveHidePrice = hidePrice || !isSignedIn;
 
   // --- LOAD PRODUCTS FROM DATABASE ---
   const loadProductsFromDB = useCallback(async () => {
@@ -423,7 +425,7 @@ export default function CatalogClient({
             )
           )}
 
-          {/* Admin Login/Logout Button */}
+          {/* Sign In / Sign Out Button */}
           <button
             onClick={toggleAdmin}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -431,17 +433,17 @@ export default function CatalogClient({
                 ? "bg-green-100 text-green-700 hover:bg-green-200"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
-            title={isAdmin ? "Lock Admin" : "Unlock Admin"}
+            title={isAdmin ? "Sign Out" : "Sign In"}
           >
             {isAdmin ? (
               <>
                 <LogOut size={16} />
-                <span className="hidden sm:inline">Lock</span>
+                <span className="hidden sm:inline">Sign Out</span>
               </>
             ) : (
               <>
                 <LogIn size={16} />
-                <span className="hidden sm:inline">Admin</span>
+                <span className="hidden sm:inline">Sign In</span>
               </>
             )}
           </button>
