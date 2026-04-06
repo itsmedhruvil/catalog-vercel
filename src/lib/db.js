@@ -107,6 +107,24 @@ const productSchema = new mongoose.Schema(
         ret.id = ret._id.toString()
         delete ret._id
         delete ret.__v
+        // Convert nested ObjectId values to strings (e.g., in activityLog)
+        if (ret.activityLog && Array.isArray(ret.activityLog)) {
+          ret.activityLog = ret.activityLog.map(entry => {
+            const cleanEntry = {}
+            // Copy all fields, converting ObjectId and Date to strings where needed
+            for (const key in entry) {
+              if (key === '_id') continue // Skip _id
+              if (key === 'orderId' && entry[key]) {
+                cleanEntry[key] = entry[key].toString()
+              } else if (key === 'timestamp' && entry[key]) {
+                cleanEntry[key] = entry[key].toISOString()
+              } else {
+                cleanEntry[key] = entry[key]
+              }
+            }
+            return cleanEntry
+          })
+        }
         return ret
       },
     },

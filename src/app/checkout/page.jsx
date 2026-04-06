@@ -18,6 +18,7 @@ import {
 import { useCart } from '@/context/CartContext'
 import { createOrder } from '@/lib/api'
 import CartSidebar from '@/components/CartSidebar'
+import { isAdminMode } from '@/lib/admin'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -115,12 +116,36 @@ export default function CheckoutPage() {
   const tax = calculateTax()
   const discount = calculateDiscount()
 
+  // Check if user is admin - redirect to orders/create if so
   useEffect(() => {
+    if (isAdminMode()) {
+      // Admins should use the manual order creation page, not checkout
+      router.push('/orders/create')
+      return
+    }
+    
     if (cartItems.length === 0 && !isSubmitting) {
       // Redirect to catalog if cart is empty
       router.push('/catalog')
     }
   }, [cartItems, router, isSubmitting])
+
+  // Early return for admins (in case useEffect hasn't run yet)
+  if (isAdminMode()) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Admins should use the Order Management system</p>
+          <button
+            onClick={() => router.push('/orders/create')}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Go to Create Order
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const handleCustomerChange = (field, value) => {
     setFormData(prev => ({

@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.0.8",
     "cloudinary": "^2.9.0",
     "lucide-react": "^0.383.0",
     "mongodb": "^7.1.0",

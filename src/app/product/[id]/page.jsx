@@ -6,6 +6,8 @@ import AddToCartButton from '@/components/AddToCartButton'
 import InquiryButton from '@/components/InquiryButton'
 import ProductQuickActions from '@/components/ProductQuickActions'
 import { getProductById } from '@/lib/db'
+import { isAdminMode } from '@/lib/admin'
+import { Edit2 } from 'lucide-react'
 
 export default async function ProductPage({ params }) {
   const { id } = await params
@@ -47,10 +49,24 @@ export default async function ProductPage({ params }) {
 
             {/* Right Column: Product Details + Add to Cart */}
             <div className="space-y-6">
-              <ProductDetails product={product} />
+              <div className="flex items-center justify-between">
+                <ProductDetails product={product} />
+                {isAdminMode() && (
+                  <button
+                    onClick={() => {
+                      // Navigate back to catalog with edit modal open
+                      window.location.href = `/catalog?edit=${product.id}`
+                    }}
+                    className="ml-4 p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shrink-0"
+                    title="Edit Product"
+                  >
+                    <Edit2 size={20} />
+                  </button>
+                )}
+              </div>
               
-              {/* Add to Cart Section */}
-              <AddToCartButton product={product} variant="default" />
+              {/* Add to Cart Section - Only visible for non-admin users */}
+              {!isAdminMode() && <AddToCartButton product={product} variant="default" />}
             </div>
           </div>
 

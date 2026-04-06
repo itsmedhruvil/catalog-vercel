@@ -1,14 +1,20 @@
 'use client'
 
+import { useMemo } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { useUser } from '@clerk/nextjs'
 
 export default function FloatingCartButton() {
   const { cartTotals, openCart, isCartOpen } = useCart()
   const { itemCount } = cartTotals()
+  const { isSignedIn } = useUser()
 
-  // Don't show the floating button if cart is open or empty
-  if (isCartOpen || itemCount === 0) return null
+  // Use useMemo to prevent unnecessary re-renders
+  const isAdmin = useMemo(() => isSignedIn, [isSignedIn])
+
+  // Don't show the floating button if cart is open, empty, or user is admin (signed in)
+  if (isCartOpen || itemCount === 0 || isAdmin) return null
 
   return (
     <button

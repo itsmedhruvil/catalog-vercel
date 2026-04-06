@@ -1,13 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ShoppingCart, Check, MinusCircle, PlusCircle } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
+import { useUser } from '@clerk/nextjs'
 
 export default function AddToCartButton({ product, variant = 'default', className = '' }) {
   const { addToCart, removeFromCart, updateQuantity, cartItems } = useCart()
   const [quantity, setQuantity] = useState(1)
   const [showQuantity, setShowQuantity] = useState(false)
+  const { isSignedIn } = useUser()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    // Check initial admin state based on Clerk sign-in status
+    setIsAdmin(isSignedIn)
+  }, [isSignedIn])
+
+  // Don't show add to cart button for admins (signed in users)
+  if (isAdmin) return null
 
   const cartItem = cartItems.find(
     item => item.productId === product.id && item.size === (product.size || '')

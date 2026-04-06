@@ -6,11 +6,6 @@ import {
   BarChart3,
   Bell,
   Truck,
-  Link as LinkIcon,
-  CheckCircle2,
-  Lock,
-  Unlock,
-  ChevronRight,
   Users,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -19,15 +14,9 @@ export default function OffCanvasMenu({
   isOpen,
   onClose,
   isAdmin,
-  isSelectionMode,
-  selectedCount,
-  isAdminUnlocked,
   sharedIdsLength,
   onNavigate,
-  onToggleAdmin,
-  onToggleSelectionMode,
-  onOpenShareLinks,
-  onOpenShareConfig,
+  isAdminUnlocked,
 }) {
   const { cartTotals, openCart } = useCart();
   const { itemCount } = cartTotals();
@@ -60,23 +49,25 @@ export default function OffCanvasMenu({
 
         {/* Menu Items */}
         <div className="p-4 space-y-2">
-          {/* Cart Button - Always Visible */}
-          <div className="mb-4">
-            <MenuButton
-              icon={<ShoppingCart size={20} />}
-              label="Shopping Cart"
-              onClick={() => {
-                openCart();
-                onClose();
-              }}
-            >
-              {itemCount > 0 && (
-                <span className="ml-auto bg-green-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-semibold">
-                  {itemCount}
-                </span>
-              )}
-            </MenuButton>
-          </div>
+          {/* Cart Button - Only visible for non-admin users */}
+          {!isAdmin && (
+            <div className="mb-4">
+              <MenuButton
+                icon={<ShoppingCart size={20} />}
+                label="Shopping Cart"
+                onClick={() => {
+                  openCart();
+                  onClose();
+                }}
+              >
+                {itemCount > 0 && (
+                  <span className="ml-auto bg-green-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-semibold">
+                    {itemCount}
+                  </span>
+                )}
+              </MenuButton>
+            </div>
+          )}
 
           {/* Admin Tools Section */}
           {isAdmin && sharedIdsLength === 0 && (
@@ -131,91 +122,6 @@ export default function OffCanvasMenu({
             </>
           )}
 
-          {/* Sharing Section */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-              Sharing
-            </p>
-            <div className="space-y-1">
-              {isSelectionMode ? (
-                <>
-                  <MenuButton
-                    icon={<CheckCircle2 size={20} />}
-                    label="Exit Selection Mode"
-                    onClick={() => {
-                      onToggleSelectionMode();
-                      onClose();
-                    }}
-                    isActive={isSelectionMode}
-                  />
-                  {selectedCount > 0 && (
-                    <MenuButton
-                      icon={<LinkIcon size={20} />}
-                      label={`Share (${selectedCount} items)`}
-                      onClick={() => {
-                        onOpenShareConfig();
-                        onClose();
-                      }}
-                      highlight
-                    />
-                  )}
-                </>
-              ) : (
-                <>
-                  {isAdmin && sharedIdsLength === 0 && (
-                    <MenuButton
-                      icon={<LinkIcon size={20} />}
-                      label="Share Links"
-                      onClick={() => {
-                        onOpenShareLinks();
-                        onClose();
-                      }}
-                    />
-                  )}
-                  <MenuButton
-                    icon={<CheckCircle2 size={20} />}
-                    label="Select Products to Share"
-                    onClick={() => {
-                      onToggleSelectionMode();
-                      onClose();
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Account Section */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">
-              Account
-            </p>
-            <div className="space-y-1">
-              <button
-                onClick={() => {
-                  onToggleAdmin();
-                  onClose();
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${
-                  isAdminUnlocked
-                    ? "bg-green-50 text-green-700 hover:bg-green-100"
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {isAdminUnlocked ? (
-                    <Unlock size={20} />
-                  ) : (
-                    <Lock size={20} />
-                  )}
-                  <span className="font-medium">
-                    {isAdminUnlocked ? "Lock Admin" : "Unlock Admin"}
-                  </span>
-                </div>
-                <ChevronRight size={18} className="text-gray-400" />
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}

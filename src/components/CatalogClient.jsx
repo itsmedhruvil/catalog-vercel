@@ -33,7 +33,9 @@ import {
   BarChart3,
   Bell,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import {
   fetchProducts,
@@ -42,11 +44,12 @@ import {
   deleteProduct,
 } from "@/lib/api";
 import { isAdminMode, toggleAdminMode } from "@/lib/admin";
+import { useUser } from "@clerk/nextjs";
+import useAdminAuth from "@/hooks/useAdminAuth";
 import ProductFormModal from "./ProductFormModal";
 import ProductFormModalEnhanced from "./ProductFormModalEnhanced";
 import ShareOptionsModal from "./ShareOptionsModal";
 import ShareConfigModal from "./ShareConfigModal";
-import AdminLoginModal from "./AdminLoginModal";
 import ManageCategoriesModal from "./ManageCategoriesModal";
 import LightboxModal from "./LightboxModal";
 import AdvancedDashboard from "./AdvancedDashboard";
@@ -84,7 +87,9 @@ export default function CatalogClient({
   const [hidePrice, setHidePrice] = useState(false);
 
   // UI & Auth State
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isSignedIn, user } = useUser();
+  const { hasAdminAccess } = useAdminAuth();
+  const isAdmin = hasAdminAccess;
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
 
@@ -97,7 +102,7 @@ export default function CatalogClient({
   const [toastMessage, setToastMessage] = useState("");
 
   // Admins always override the 'hide price' setting
-  const effectiveHidePrice = hidePrice && !isAdmin;
+  const effectiveHidePrice = hidePrice && !hasAdminAccess;
 
   // --- LOAD PRODUCTS FROM DATABASE ---
   const loadProductsFromDB = useCallback(async () => {
@@ -182,38 +187,6 @@ export default function CatalogClient({
       setHidePrice(true);
     }
   }, [categories]);
-
-  // --- ADMIN STATE INITIALIZATION ---
-  useEffect(() => {
-    // Check admin state synchronously to prevent flash of non-admin content
-    const checkAdminState = () => {
-      const adminEnabled = isAdminMode();
-      setIsAdmin(adminEnabled);
-    };
-    
-    // Check immediately on mount
-    checkAdminState();
-    
-    // Also check on page visibility change (helps with browser back button)
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkAdminState();
-      }
-    };
-    
-    // Also check on page focus (helps with browser back button)
-    const handleFocus = () => {
-      checkAdminState();
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
 
   // --- LOAD DATA ON MOUNT ---
   useEffect(() => {
@@ -360,13 +333,13 @@ export default function CatalogClient({
 
   const toggleAdmin = () => {
     if (isAdmin) {
-      // Disable admin mode persistently
-      toggleAdminMode();
-      setIsAdmin(false);
-      setIsSelectionMode(false);
-      showToast("Logged out of Admin mode");
+      // With Clerk, we redirect to sign out
+      // The sign out is handled by Clerk's UserButton or signOut function
+      // For now, we'll just show a message and let the user sign out via the header
+      showToast("Please use the Admin header to sign out");
     } else {
-      setActiveModal("adminLogin");
+      // Redirect to Clerk sign-in page
+      window.location.href = '/sign-in';
     }
   };
 
@@ -392,28 +365,110 @@ export default function CatalogClient({
           )}
         </div>
 
-        {/* Menu Button */}
-        <button
-          onClick={() => setIsMenuOpen(true)}
-          className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-          title="Open Menu"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className="flex items-center gap-2">
+          {/* Sharing Button - Visible when not in selection mode and no shared ids */}
+          {sharedIds.length === 0 && !isSelectionMode && (
+            <button
+              onClick={() => setActiveModal("shareOptions")}
+              className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              title="Share Links"
+            >
+              <Share2 size={20} />
+            </button>
+          )}
+
+          {/* Selection Mode / Share Selected Button */}
+          {sharedIds.length === 0 && (
+            isSelectionMode ? (
+              selectedProductIds.size > 0 ? (
+                <button
+                  onClick={() => {
+                    // For non-admins, directly generate and copy the share link
+                    // For admins, show the config modal for more options
+                    if (!isAdmin) {
+                      handleGenerateShareLink({
+                        includeTotal: false,
+                        includeStock: false,
+                        hidePriceConfig: false,
+                      });
+                    } else {
+                      setActiveModal("shareConfig");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
+                  title={`Share ${selectedProductIds.size} selected items`}
+                >
+                  <LinkIcon size={16} />
+                  <span>{selectedProductIds.size}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsSelectionMode(false)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                  title="Exit Selection Mode"
+                >
+                  <X size={16} />
+                  <span>Cancel</span>
+                </button>
+              )
+            ) : (
+              <button
+                onClick={() => setIsSelectionMode(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                title="Select Products to Share"
+              >
+                <CheckCircle2 size={16} />
+                <span className="hidden sm:inline">Select</span>
+              </button>
+            )
+          )}
+
+          {/* Admin Login/Logout Button */}
+          <button
+            onClick={toggleAdmin}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
+              isAdmin
+                ? "bg-green-100 text-green-700 hover:bg-green-200"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+            title={isAdmin ? "Lock Admin" : "Unlock Admin"}
           >
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
+            {isAdmin ? (
+              <>
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Lock</span>
+              </>
+            ) : (
+              <>
+                <LogIn size={16} />
+                <span className="hidden sm:inline">Admin</span>
+              </>
+            )}
+          </button>
+
+          {/* Menu Button */}
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            title="Open Menu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* OFF-CANVAS MENU */}
@@ -421,15 +476,9 @@ export default function CatalogClient({
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         isAdmin={isAdmin}
-        isSelectionMode={isSelectionMode}
-        selectedCount={selectedProductIds.size}
         isAdminUnlocked={isAdmin}
         sharedIdsLength={sharedIds.length}
         onNavigate={(path) => router.push(path)}
-        onToggleAdmin={toggleAdmin}
-        onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
-        onOpenShareLinks={() => setActiveModal("shareOptions")}
-        onOpenShareConfig={() => setActiveModal("shareConfig")}
       />
 
       {/* SEARCH BAR */}
@@ -568,17 +617,6 @@ export default function CatalogClient({
       )}
 
       {/* MODALS */}
-      {activeModal === "adminLogin" && (
-        <AdminLoginModal
-          onClose={() => setActiveModal(null)}
-          onSuccess={() => {
-            setIsAdmin(true);
-            setActiveModal(null);
-            showToast("Admin mode enabled");
-          }}
-        />
-      )}
-
       {activeModal === "categories" && isAdmin && (
         <ManageCategoriesModal
           categories={categories}

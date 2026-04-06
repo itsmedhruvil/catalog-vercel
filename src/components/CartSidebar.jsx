@@ -1,13 +1,21 @@
 'use client'
 
+import { useMemo } from 'react'
 import { X, Trash2, MinusCircle, PlusCircle, ShoppingCart, ArrowRight, Package } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { useRouter } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 
 export default function CartSidebar() {
   const { cartItems, isCartOpen, closeCart, updateQuantity, removeFromCart, cartTotals, clearCart } = useCart()
   const router = useRouter()
   const { itemCount, subtotal } = cartTotals()
+  const { isSignedIn } = useUser()
+
+  // Use useMemo to prevent unnecessary re-renders
+  const isAdmin = useMemo(() => isSignedIn, [isSignedIn])
+
+  if (!isCartOpen || isAdmin) return null
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -21,8 +29,6 @@ export default function CartSidebar() {
     closeCart()
     router.push('/checkout')
   }
-
-  if (!isCartOpen) return null
 
   return (
     <>
