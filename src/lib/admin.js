@@ -2,9 +2,12 @@
 // This file provides helper functions for admin mode detection
 // Admin mode is determined by Clerk authentication AND admin email check
 
-// Get list of admin emails from environment variable
+// The admin email - only this email gets admin access
+const ADMIN_EMAIL = 'corp.weexalate@gmail.com';
+
+// Get list of admin emails from environment variable or use default
 export const getAdminEmails = () => {
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
+  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS || ADMIN_EMAIL;
   return adminEmails
     .split(',')
     .map(email => email.trim().toLowerCase())
@@ -12,21 +15,20 @@ export const getAdminEmails = () => {
 };
 
 // Check if a specific email has admin access
+// Only corp.weexalate@gmail.com (or emails in NEXT_PUBLIC_ADMIN_EMAILS) gets admin access
 export const isAdminEmail = (email) => {
   if (!email) return false;
   const adminEmails = getAdminEmails();
-  // If no admin emails are configured, allow all signed-in users (backward compatibility)
-  if (adminEmails.length === 0) return true;
+  // Only allow specific admin emails - no backward compatibility for security
   return adminEmails.includes(email.toLowerCase());
 };
 
-// Check if user is signed in with Clerk (client-side)
+// Check if user is in admin mode (client-side)
 export const isAdminMode = () => {
   if (typeof window !== 'undefined') {
-    // Check if user has an active Clerk session
-    // This will be overridden by actual Clerk auth check in components
-    const clerkSession = localStorage.getItem('clerk-session');
-    return !!clerkSession;
+    // Check if admin mode is enabled in localStorage
+    // This is set by enableAdminMode() when a user with admin email signs in
+    return localStorage.getItem('admin_mode_enabled') === 'true';
   }
   return false;
 };

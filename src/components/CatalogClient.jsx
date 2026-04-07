@@ -44,7 +44,6 @@ import {
   deleteProduct,
 } from "@/lib/api";
 import { isAdminMode, toggleAdminMode } from "@/lib/admin";
-import { useUser } from "@clerk/nextjs";
 import useAdminAuth from "@/hooks/useAdminAuth";
 import ProductFormModal from "./ProductFormModal";
 import ProductFormModalEnhanced from "./ProductFormModalEnhanced";
@@ -86,10 +85,10 @@ export default function CatalogClient({
   const [showStock, setShowStock] = useState(false);
   const [hidePrice, setHidePrice] = useState(false);
 
-  // UI & Auth State
-  const { isSignedIn, user } = useUser();
-  const { hasAdminAccess } = useAdminAuth();
-  const isAdmin = hasAdminAccess;
+  // UI & Auth State - Use only useAdminAuth to avoid duplicate hook calls
+  // useAdminAuth internally uses useUser, so we get all auth state from one source
+  const { isSignedIn, user, hasAdminAccess, isAdmin: isAdminValue } = useAdminAuth();
+  const isAdmin = isAdminValue;
   const isUserSignedIn = isSignedIn && !isAdmin; // Regular user (not admin)
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
@@ -340,8 +339,8 @@ export default function CatalogClient({
       // For now, we'll just show a message and let the user sign out via the header
       showToast("Please use the Admin header to sign out");
     } else {
-      // Redirect to Clerk sign-in page
-      window.location.href = '/sign-in';
+      // Navigate to sign-in page using Next.js router for client-side navigation
+      router.push('/sign-in');
     }
   };
 
@@ -352,192 +351,63 @@ export default function CatalogClient({
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-10 bg-white shadow-sm px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">
-            {sharedIds.length > 0 ? "Curated Collection" : "Ready Stock"}
-          </h1>
-          {sharedIds.length === 0 && (
-            <p className="text-xs text-gray-500">
-              {isAdmin
-                ? "Admin Mode (Editing Enabled)"
-                : "Viewer Mode (Read-Only)"}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Sharing Button - Visible when not in selection mode and no shared ids */}
-          {sharedIds.length === 0 && !isSelectionMode && (
-            <button
-              onClick={() => setActiveModal("shareOptions")}
-              className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              title="Share Links"
-            >
-              <Share2 size={20} />
-            </button>
-          )}
-
-          {/* Selection Mode / Share Selected Button */}
-          {sharedIds.length === 0 && (
-            isSelectionMode ? (
-              selectedProductIds.size > 0 ? (
-                <button
-                  onClick={() => {
-                    // For non-admins, directly generate and copy the share link
-                    // For admins, show the config modal for more options
-                    if (!isAdmin) {
-                      handleGenerateShareLink({
-                        includeTotal: false,
-                        includeStock: false,
-                        hidePriceConfig: false,
-                      });
-                    } else {
-                      setActiveModal("shareConfig");
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
-                  title={`Share ${selectedProductIds.size} selected items`}
-                >
-                  <LinkIcon size={16} />
-                  <span>{selectedProductIds.size}</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsSelectionMode(false)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
-                  title="Exit Selection Mode"
-                >
-                  <X size={16} />
-                  <span>Cancel</span>
-                </button>
-              )
-            ) : (
+      {/* SEARCH BAR - Fixed width to match header */}
+      <div className="max-w-7xl mx-auto">
+        <div className="px-4 py-3">
+          <div className="relative">
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Search products by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-gray-100 text-sm text-gray-900 rounded-xl pl-10 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-500"
+            />
+            {searchQuery && (
               <button
-                onClick={() => setIsSelectionMode(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
-                title="Select Products to Share"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <CheckCircle2 size={16} />
-                <span className="hidden sm:inline">Select</span>
+                <X size={16} />
               </button>
-            )
-          )}
-
-          {/* Sign In / Sign Out Button */}
-          <button
-            onClick={toggleAdmin}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
-              isAdmin
-                ? "bg-green-100 text-green-700 hover:bg-green-200"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-            title={isAdmin ? "Sign Out" : "Sign In"}
-          >
-            {isAdmin ? (
-              <>
-                <LogOut size={16} />
-                <span className="hidden sm:inline">Sign Out</span>
-              </>
-            ) : (
-              <>
-                <LogIn size={16} />
-                <span className="hidden sm:inline">Sign In</span>
-              </>
             )}
-          </button>
-
-          {/* Menu Button */}
-          <button
-            onClick={() => setIsMenuOpen(true)}
-            className="p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-            title="Open Menu"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
+          </div>
         </div>
-      </header>
 
-      {/* OFF-CANVAS MENU */}
-      <OffCanvasMenu
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        isAdmin={isAdmin}
-        isAdminUnlocked={isAdmin}
-        sharedIdsLength={sharedIds.length}
-        onNavigate={(path) => router.push(path)}
-      />
+        {/* FILTER TABS */}
+        {sharedIds.length === 0 && (
+          <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
+            {["all", ...categories].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${
+                  filter === f
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
 
-      {/* SEARCH BAR */}
-      <div className="bg-white px-4 py-3 border-b border-gray-100">
-        <div className="relative">
-          <Search
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search products by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-100 text-sm text-gray-900 rounded-xl pl-10 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-500"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveModal("categories")}
+                className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
+              >
+                <Settings size={14} /> Manage
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* FILTER TABS */}
-      {sharedIds.length === 0 && (
-        <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
-          {["all", ...categories].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${
-                filter === f
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-
-          {isAdmin && (
-            <button
-              onClick={() => setActiveModal("categories")}
-              className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
-            >
-              <Settings size={14} /> Manage
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* PRODUCT GRID */}
-      <main className="p-3">
+      {/* PRODUCT GRID - Fixed width to match header */}
+      <main className="max-w-7xl mx-auto p-4">
         {displayedProducts.length === 0 ? (
           <div className="text-center py-20 text-gray-500">
             {searchQuery ? (

@@ -22,11 +22,11 @@ import {
   Eye,
   UserPlus
 } from 'lucide-react'
-import { isAdminMode } from '@/lib/admin'
+import useAdminAuth from '@/hooks/useAdminAuth'
 
 export default function ClientsPage() {
   const router = useRouter()
-  const [isAdmin, setIsAdmin] = useState(false)
+  const { isSignedIn, isAdmin, isLoading } = useAdminAuth()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -44,19 +44,21 @@ export default function ClientsPage() {
   })
 
   useEffect(() => {
-    const checkAdmin = () => {
-      const adminEnabled = isAdminMode()
-      setIsAdmin(adminEnabled)
-      
-      if (!adminEnabled) {
-        router.push('/')
+    if (isSignedIn !== undefined) {
+      if (isSignedIn && !isAdmin) {
+        // User is signed in but not an admin - redirect to catalog
+        router.push('/catalog')
+      } else if (!isSignedIn) {
+        // User is not signed in - redirect to sign in
+        router.push('/sign-in')
       }
     }
     
-    checkAdmin()
-    loadCustomers()
-    loadStats()
-  }, [router])
+    if (isAdmin) {
+      loadCustomers()
+      loadStats()
+    }
+  }, [router, isSignedIn, isAdmin])
 
   const loadCustomers = async () => {
     try {
@@ -126,6 +128,18 @@ export default function ClientsPage() {
       month: 'short',
       day: 'numeric'
     })
+  }
+
+  // Show loading state while checking auth
+  if (isLoading || isSignedIn === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isAdmin) {

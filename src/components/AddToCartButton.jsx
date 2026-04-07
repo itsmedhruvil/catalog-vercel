@@ -5,6 +5,7 @@ import { ShoppingCart, Check, MinusCircle, PlusCircle } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { useUser } from '@clerk/nextjs'
 import LoginRequiredModal from './LoginRequiredModal'
+import { isAdminMode } from '@/lib/admin'
 
 export default function AddToCartButton({ product, variant = 'default', className = '' }) {
   const { addToCart, removeFromCart, updateQuantity, cartItems } = useCart()
@@ -13,10 +14,10 @@ export default function AddToCartButton({ product, variant = 'default', classNam
   const { isSignedIn } = useUser()
   const [showLoginModal, setShowLoginModal] = useState(false)
 
-  // Use useMemo to prevent unnecessary re-renders
-  const isAdmin = useMemo(() => isSignedIn, [isSignedIn])
+  // Only hide add to cart button for admin mode users, not regular signed-in users
+  const isAdmin = useMemo(() => isAdminMode(), [isSignedIn])
 
-  // Don't show add to cart button for admins (signed in users)
+  // Don't show add to cart button for admins (users in admin mode)
   if (isAdmin) return null
 
   const cartItem = cartItems.find(

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Edit2, Trash2, Download, Printer, Mail, Phone, MapPin, Calendar, Clock, Truck, CreditCard, Users, Eye, EyeOff, Plus, Save, X } from "lucide-react";
-import { isAdminMode } from "@/lib/admin";
+import useAdminAuth from "@/hooks/useAdminAuth";
 import { fetchOrderById, updateOrder } from "@/lib/api";
 
 export default function OrderDetailsPage() {
@@ -11,7 +11,7 @@ export default function OrderDetailsPage() {
   const params = useParams();
   const orderId = params.id;
   
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isSignedIn, isAdmin, isLoading } = useAdminAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -51,34 +51,46 @@ export default function OrderDetailsPage() {
   ];
 
   useEffect(() => {
-    // Check if user is in admin mode using persistent state
-    const checkAdmin = () => {
-      const adminEnabled = isAdminMode();
-      setIsAdmin(adminEnabled);
-      
-      if (!adminEnabled) {
-        // Redirect to main catalog if not in admin mode
-        router.push('/');
+    if (isSignedIn !== undefined) {
+      if (isSignedIn && !isAdmin) {
+        // User is signed in but not an admin - redirect to catalog
+        router.push('/catalog');
+      } else if (!isSignedIn) {
+        // User is not signed in - redirect to sign in
+        router.push('/sign-in');
       }
-    };
+    }
     
-    // Fetch order data
-    const loadOrder = async () => {
-      try {
-        const orderData = await fetchOrderById(orderId);
-        setOrder(orderData);
-        setEditData(orderData);
-      } catch (error) {
-        console.error('Error fetching order:', error);
-        alert('Failed to load order details');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (isAdmin) {
+      // Fetch order data
+      const loadOrder = async () => {
+        try {
+          const orderData = await fetchOrderById(orderId);
+          setOrder(orderData);
+          setEditData(orderData);
+        } catch (error) {
+          console.error('Error fetching order:', error);
+          alert('Failed to load order details');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadOrder();
+    }
+  }, [router, orderId, isSignedIn, isAdmin]);
 
-    checkAdmin();
-    loadOrder();
-  }, [router, orderId]);
+  // Show loading state while checking auth
+  if (isLoading || isSignedIn === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return null; // Will redirect automatically in useEffect

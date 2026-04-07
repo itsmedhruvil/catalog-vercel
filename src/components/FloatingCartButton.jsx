@@ -4,16 +4,17 @@ import { useMemo } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { useUser } from '@clerk/nextjs'
+import { isAdminMode } from '@/lib/admin'
 
 export default function FloatingCartButton() {
   const { cartTotals, openCart, isCartOpen } = useCart()
   const { itemCount } = cartTotals()
   const { isSignedIn } = useUser()
 
-  // Use useMemo to prevent unnecessary re-renders
-  const isAdmin = useMemo(() => isSignedIn, [isSignedIn])
+  // Only hide floating button for admin mode users, not regular signed-in users
+  const isAdmin = useMemo(() => isAdminMode(), [isSignedIn])
 
-  // Don't show the floating button if cart is open, empty, or user is admin (signed in)
+  // Don't show the floating button if cart is open, empty, or user is admin (in admin mode)
   if (isCartOpen || itemCount === 0 || isAdmin) return null
 
   return (

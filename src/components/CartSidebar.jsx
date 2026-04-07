@@ -5,6 +5,7 @@ import { X, Trash2, MinusCircle, PlusCircle, ShoppingCart, ArrowRight, Package }
 import { useCart } from '@/context/CartContext'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
+import { isAdminMode } from '@/lib/admin'
 
 export default function CartSidebar() {
   const { cartItems, isCartOpen, closeCart, updateQuantity, removeFromCart, cartTotals, clearCart } = useCart()
@@ -12,8 +13,8 @@ export default function CartSidebar() {
   const { itemCount, subtotal } = cartTotals()
   const { isSignedIn } = useUser()
 
-  // Use useMemo to prevent unnecessary re-renders
-  const isAdmin = useMemo(() => isSignedIn, [isSignedIn])
+  // Only hide cart for admin mode users, not regular signed-in users
+  const isAdmin = useMemo(() => isAdminMode(), [isSignedIn])
 
   if (!isCartOpen || isAdmin) return null
 

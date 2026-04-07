@@ -1,11 +1,36 @@
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import { fetchOrders } from '@/lib/api'
+import { getAdminEmails } from '@/lib/admin'
 
 export const metadata = {
-  title: 'My Orders - Product Catalog',
-  description: 'View your order history and track your orders',
+  title: 'Orders - Product Catalog',
+  description: 'Manage orders',
 }
 
 export default async function OrdersPage() {
+  const { userId } = await auth()
+  
+  // If not signed in, redirect to sign in
+  if (!userId) {
+    redirect('/sign-in')
+  }
+  
+  // Get user's primary email from Clerk
+  // For server-side, we need to check if user has admin access
+  // We'll use the session to get user info
+  const { sessionClaims } = await auth()
+  const userEmail = sessionClaims?.email
+  
+  // Check if user is admin
+  const adminEmails = getAdminEmails()
+  const isAdmin = userEmail && adminEmails.includes(userEmail.toLowerCase())
+  
+  // If user is not admin, redirect to catalog
+  if (!isAdmin) {
+    redirect('/catalog')
+  }
+  
   let orders = []
   try {
     orders = await fetchOrders()

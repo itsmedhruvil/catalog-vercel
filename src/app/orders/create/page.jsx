@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Save, X, User, Mail, Phone, MapPin, CreditCard, Truck, Calendar, Package, Search, PlusCircle, Trash2, MinusCircle, Eye, EyeOff, Users } from "lucide-react";
-import { isAdminMode } from "@/lib/admin";
+import useAdminAuth from "@/hooks/useAdminAuth";
 import { fetchProducts, createOrder } from "@/lib/api";
 
 export default function CreateOrderPage() {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isSignedIn, isAdmin, isLoading } = useAdminAuth();
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -175,32 +175,44 @@ export default function CreateOrderPage() {
   ];
 
   useEffect(() => {
-    // Check if user is in admin mode using persistent state
-    const checkAdmin = () => {
-      const adminEnabled = isAdminMode();
-      setIsAdmin(adminEnabled);
-      
-      if (!adminEnabled) {
-        // Redirect to main catalog if not in admin mode
-        router.push('/');
+    if (isSignedIn !== undefined) {
+      if (isSignedIn && !isAdmin) {
+        // User is signed in but not an admin - redirect to catalog
+        router.push('/catalog');
+      } else if (!isSignedIn) {
+        // User is not signed in - redirect to sign in
+        router.push('/sign-in');
       }
-    };
+    }
     
-    // Fetch products data
-    const loadProducts = async () => {
-      try {
-        const productsData = await fetchProducts();
-        setProducts(productsData);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (isAdmin) {
+      // Fetch products data
+      const loadProducts = async () => {
+        try {
+          const productsData = await fetchProducts();
+          setProducts(productsData);
+        } catch (error) {
+          console.error('Error fetching products:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadProducts();
+    }
+  }, [router, isSignedIn, isAdmin]);
 
-    checkAdmin();
-    loadProducts();
-  }, [router]);
+  // Show loading state while checking auth
+  if (isLoading || isSignedIn === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return null; // Will redirect automatically in useEffect
