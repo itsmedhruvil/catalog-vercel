@@ -13,16 +13,19 @@ import {
   Package,
   CheckCircle,
   AlertCircle,
-  ShoppingCart
+  ShoppingCart,
+  LogIn
 } from 'lucide-react'
 import { useCart } from '@/context/CartContext'
 import { createOrder } from '@/lib/api'
 import CartSidebar from '@/components/CartSidebar'
 import { isAdminMode } from '@/lib/admin'
+import { useUser } from '@clerk/nextjs'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { cartItems, clearCart, cartTotals, openCart } = useCart()
+  const { isSignedIn, isLoaded } = useUser()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showCart, setShowCart] = useState(false)
   const { subtotal } = cartTotals()
@@ -116,7 +119,7 @@ export default function CheckoutPage() {
   const tax = calculateTax()
   const discount = calculateDiscount()
 
-  // Check if user is admin - redirect to orders/create if so
+  // Check authentication and admin status
   useEffect(() => {
     if (isAdminMode()) {
       // Admins should use the manual order creation page, not checkout
@@ -124,11 +127,31 @@ export default function CheckoutPage() {
       return
     }
     
+    // Redirect to sign-in if not authenticated (only after loading is complete)
+    if (isLoaded && !isSignedIn) {
+      const signInUrl = new URL('/sign-in', window.location.origin)
+      signInUrl.searchParams.set('redirect_url', '/checkout')
+      router.push(signInUrl.toString())
+      return
+    }
+    
     if (cartItems.length === 0 && !isSubmitting) {
       // Redirect to catalog if cart is empty
       router.push('/catalog')
     }
-  }, [cartItems, router, isSubmitting])
+  }, [cartItems, router, isSubmitting, isSignedIn, isLoaded])
+
+  // Show loading state while checking authentication
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Early return for admins (in case useEffect hasn't run yet)
   if (isAdminMode()) {
@@ -142,6 +165,18 @@ export default function CheckoutPage() {
           >
             Go to Create Order
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect to sign-in if not authenticated
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to sign in...</p>
         </div>
       </div>
     )

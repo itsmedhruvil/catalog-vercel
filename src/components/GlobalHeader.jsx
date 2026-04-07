@@ -23,20 +23,24 @@ import useAdminAuth from '@/hooks/useAdminAuth'
 import { useCart } from '@/context/CartContext'
 
 export default function GlobalHeader() {
+  // Get pathname first to check if we should render
+  const pathname = usePathname()
+  
+  // Early return BEFORE any other hooks if on sign-in/sign-up pages
+  // This ensures we don't violate Rules of Hooks
+  if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
+    return null
+  }
+
+  // All hooks must be called after the early return check
   const { isSignedIn, isAdmin, user } = useAdminAuth()
   const { signOut, openUserProfile } = useClerk()
   const router = useRouter()
-  const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const { cartTotals, openCart } = useCart()
   const { itemCount } = cartTotals()
-
-  // Don't show on sign-in/sign-up pages
-  if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
-    return null
-  }
 
   const handleSignOut = useCallback(async () => {
     if (isSigningOut) return
@@ -72,6 +76,8 @@ export default function GlobalHeader() {
     { icon: <Package size={20} />, label: 'My Orders', path: '/my-orders' },
   ]
 
+  // Always show user menu items for non-admin users (including logged out users)
+  // Logged out users will be redirected to sign-in when they try to access my-orders
   const menuItems = isAdmin ? adminMenuItems : userMenuItems
 
   return (

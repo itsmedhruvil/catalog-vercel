@@ -1,7 +1,19 @@
+// Get the base URL for API calls (works in both client and server)
+function getApiBaseUrl() {
+  // In browser, use relative URLs
+  if (typeof window !== 'undefined') {
+    return ''
+  }
+  // In server (Node.js), use localhost with port from env or default
+  const port = process.env.PORT || '3000'
+  return `http://localhost:${port}`
+}
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 export async function fetchProducts() {
-  const res = await fetch('/api/products', { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/products`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load products')
   return res.json()
 }
@@ -34,24 +46,34 @@ export async function deleteProduct(id) {
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 export async function fetchOrders() {
-  const res = await fetch('/api/orders', { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/orders`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load orders')
   return res.json()
 }
 
 export async function fetchOrderById(id) {
-  const res = await fetch(`/api/orders/${id}`, { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/orders/${id}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load order')
   return res.json()
 }
 
 export async function createOrder(data) {
+  // Clerk middleware reads session from cookies automatically
+  // The __session cookie is set by Clerk when user is signed in
+  // No need to manually pass auth token - middleware handles it
+  
   const res = await fetch('/api/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error('Failed to create order')
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create order')
+  }
   return res.json()
 }
 
@@ -71,25 +93,29 @@ export async function deleteOrder(id) {
 }
 
 export async function fetchOrdersByStatus(status) {
-  const res = await fetch(`/api/orders?status=${status}`, { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/orders?status=${status}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load orders')
   return res.json()
 }
 
 export async function fetchOrdersByCustomer(customerEmail) {
-  const res = await fetch(`/api/orders?customer=${encodeURIComponent(customerEmail)}`, { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/orders?customer=${encodeURIComponent(customerEmail)}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load orders')
   return res.json()
 }
 
 export async function fetchOrdersByDateRange(startDate, endDate) {
-  const res = await fetch(`/api/orders?startDate=${startDate}&endDate=${endDate}`, { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/orders?startDate=${startDate}&endDate=${endDate}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load orders')
   return res.json()
 }
 
 export async function fetchOrderAnalytics() {
-  const res = await fetch('/api/orders?analytics=true', { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/orders?analytics=true`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load analytics')
   return res.json()
 }
@@ -97,16 +123,18 @@ export async function fetchOrderAnalytics() {
 // ─── Customers ────────────────────────────────────────────────────────────────
 
 export async function fetchCustomers(query) {
+  const baseUrl = getApiBaseUrl()
   const url = query 
-    ? `/api/customers?q=${encodeURIComponent(query)}`
-    : '/api/customers'
+    ? `${baseUrl}/api/customers?q=${encodeURIComponent(query)}`
+    : `${baseUrl}/api/customers`
   const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load customers')
   return res.json()
 }
 
 export async function fetchCustomerById(id) {
-  const res = await fetch(`/api/customers/${id}`, { cache: 'no-store' })
+  const baseUrl = getApiBaseUrl()
+  const res = await fetch(`${baseUrl}/api/customers/${id}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load customer')
   return res.json()
 }

@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
@@ -61,9 +62,34 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.next()
     }
     
-    // For admin API routes (customers, orders), check admin status
+    // Allow order creation for all authenticated users (not just admins)
+    if (req.nextUrl.pathname === '/api/orders' && req.method === 'POST') {
+      if (!userId) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized - Must be signed in to create order' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      // Allow non-admin users to create orders
+      return NextResponse.next()
+    }
+    
+    // Allow authenticated users to fetch their own orders (GET /api/orders)
+    // The API will filter orders by customer email
+    if (req.nextUrl.pathname === '/api/orders' && req.method === 'GET') {
+      if (!userId) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized - Must be signed in to fetch orders' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      // Allow all authenticated users to fetch orders (will be filtered by customer email in API)
+      return NextResponse.next()
+    }
+    
+    // For admin API routes (customers, orders PUT/DELETE), check admin status
     if (req.nextUrl.pathname.startsWith('/api/customers') || 
-        req.nextUrl.pathname.startsWith('/api/orders')) {
+        (req.nextUrl.pathname.startsWith('/api/orders') && req.method !== 'GET')) {
       if (!userId) {
         return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
