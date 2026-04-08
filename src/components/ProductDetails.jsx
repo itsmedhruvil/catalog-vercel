@@ -3,19 +3,9 @@
 import { Layers, Box, Package } from 'lucide-react'
 
 export default function ProductDetails({ product }) {
-  // Use totalQuantity as the single source of truth, fallback to availableQuantity for compatibility
-  // Handle case where totalQuantity is 0 (default) but availableQuantity has a value
-  const hasTotalQty = product.totalQuantity !== undefined && product.totalQuantity !== null && product.totalQuantity !== 0;
-  const hasAvailableQty = product.availableQuantity != null && product.availableQuantity !== '';
-  const totalQty = hasTotalQty 
-                   ? parseInt(product.totalQuantity) || 0
-                   : (hasAvailableQty ? parseInt(product.availableQuantity) || 0 : 0);
-  
-  // Calculate available quantity (total - holds)
-  const holds = product.holds || []
-  const totalHold = holds.reduce((sum, h) => sum + (parseInt(h.quantity) || 0), 0)
-  const availableQty = Math.max(0, totalQty - totalHold)
-  
+  // totalQuantity is the single source of truth for stock
+  const totalQty = parseInt(product.totalQuantity) || 0;
+  const availableQty = totalQty;
   const isSoldOut = availableQty <= 0
 
   return (
@@ -67,7 +57,7 @@ export default function ProductDetails({ product }) {
             </div>
           )}
           
-          {(totalQty > 0 || product.totalQuantity !== undefined) && (
+          {totalQty > 0 && (
             <div className="flex items-center gap-3 bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
               <div className="bg-white p-2 rounded-lg shadow-sm border border-blue-100">
                 <Package size={20} className="text-blue-500" />
@@ -75,9 +65,6 @@ export default function ProductDetails({ product }) {
               <div>
                 <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-0.5">In Stock</p>
                 <p className="text-xs font-semibold text-blue-900">{availableQty} available</p>
-                {totalHold > 0 && (
-                  <p className="text-[10px] text-blue-500 mt-0.5">(Total: {totalQty}, On Hold: {totalHold})</p>
-                )}
               </div>
             </div>
           )}

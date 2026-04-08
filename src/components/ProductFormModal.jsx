@@ -12,11 +12,12 @@ export default function ProductFormModal({ product, categories, onClose, onSave,
       ? { 
           ...product, 
           // Use totalQuantity as the single source of truth for stock
-          totalQuantity: product.totalQuantity ?? product.availableQuantity ?? '', 
+          totalQuantity: product.totalQuantity !== undefined ? product.totalQuantity : (product.availableQuantity || ''), 
           size: product.size ?? '', 
-          pcsPerCarton: product.pcsPerCarton ?? '' 
+          pcsPerCarton: product.pcsPerCarton ?? '',
+          deliveryTime: product.deliveryTime ?? ''
         }
-      : { name: '', price: '', category: defaultCategory, description: '', images: [], totalQuantity: '', size: '', pcsPerCarton: '' }
+      : { name: '', price: '', category: defaultCategory, description: '', images: [], totalQuantity: '', size: '', pcsPerCarton: '', deliveryTime: '' }
   )
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)

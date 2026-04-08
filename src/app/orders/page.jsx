@@ -43,9 +43,9 @@ export default async function OrdersPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Orders</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Orders Management</h1>
           <p className="text-gray-600">
-            Track your order history and view order details
+            Manage all customer orders, track status, and process deliveries
           </p>
         </div>
 
@@ -67,15 +67,15 @@ export default async function OrdersPage() {
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders found</h2>
             <p className="text-gray-500 mb-6">
-              Your order history will appear here once you place your first order.
+              Customer orders will appear here once they start placing orders.
             </p>
             <a
               href="/catalog"
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors"
             >
-              Browse Catalog
+              Go to Catalog
             </a>
           </div>
         ) : (
@@ -91,18 +91,27 @@ export default async function OrdersPage() {
 }
 
 function OrderCard({ order }) {
+  // Use orderStatus field from the database
+  const status = order.orderStatus || order.status || 'pending'
+  
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-700',
+    confirmed: 'bg-green-100 text-green-700',
     processing: 'bg-blue-100 text-blue-700',
-    completed: 'bg-green-100 text-green-700',
+    shipped: 'bg-purple-100 text-purple-700',
+    delivered: 'bg-green-100 text-green-700',
     cancelled: 'bg-red-100 text-red-700',
+    refunded: 'bg-orange-100 text-orange-700',
   }
 
   const statusLabels = {
     pending: 'Pending',
+    confirmed: 'Confirmed',
     processing: 'Processing',
-    completed: 'Completed',
+    shipped: 'Shipped',
+    delivered: 'Delivered',
     cancelled: 'Cancelled',
+    refunded: 'Refunded',
   }
 
   const formatDate = (dateString) => {
@@ -124,19 +133,22 @@ function OrderCard({ order }) {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <span className="font-semibold text-gray-900">
-              Order #{order.id?.slice(-6).toUpperCase() || 'N/A'}
+              Order #{order.orderNumber || order.id?.slice(-6).toUpperCase() || 'N/A'}
             </span>
             <span
               className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                statusColors[order.status] || statusColors.pending
+                statusColors[status] || statusColors.pending
               }`}
             >
-              {statusLabels[order.status] || 'Pending'}
+              {statusLabels[status] || 'Pending'}
             </span>
           </div>
           <div className="text-sm text-gray-500 space-y-1">
-            <p>Placed on {formatDate(order.createdAt)}</p>
-            <p>{totalItems} items • {totalPrice.toFixed(2)} pts</p>
+            <p>Placed on {formatDate(order.createdAt || order.orderDate)}</p>
+            <p>{totalItems} items • ₹{totalPrice.toFixed(2)}</p>
+            {order.customer?.name && (
+              <p>Customer: {order.customer.name}</p>
+            )}
           </div>
         </div>
 

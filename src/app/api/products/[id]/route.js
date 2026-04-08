@@ -27,56 +27,18 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     
-    // Prepare update data with all possible fields
+    // Prepare update data with essential fields
     const updateData = {
       name,
       description,
       price,
       category,
-      images,
-      // Delivery Management Fields
+      images: images || [],
+      // Product specifications
+      totalQuantity: body.totalQuantity !== undefined ? parseInt(body.totalQuantity) || 0 : undefined,
+      size: body.size,
+      pcsPerCarton: body.pcsPerCarton,
       deliveryTime: body.deliveryTime,
-      deliveryStatus: body.deliveryStatus,
-      deliveryTracking: body.deliveryTracking,
-      deliveryNotes: body.deliveryNotes,
-      estimatedDelivery: body.estimatedDelivery,
-      
-      // Analytics Fields
-      salesLast30Days: body.salesLast30Days,
-      salesPrevious30Days: body.salesPrevious30Days,
-      totalSales: body.totalSales,
-      views: body.views,
-      lastSoldAt: body.lastSoldAt,
-      
-      // Inventory Analytics
-      holds: body.holds,
-      reorderLevel: body.reorderLevel,
-      reorderQuantity: body.reorderQuantity,
-      
-      // Performance Metrics
-      conversionRate: body.conversionRate,
-      returnRate: body.returnRate,
-      avgDeliveryTime: body.avgDeliveryTime,
-      
-      // Customer Analytics
-      customerReviews: body.customerReviews,
-      avgRating: body.avgRating,
-      
-      // Supplier Information
-      supplier: body.supplier,
-      supplierContact: body.supplierContact,
-      supplierLeadTime: body.supplierLeadTime,
-      
-      // Warehouse Management
-      warehouseLocation: body.warehouseLocation,
-      binLocation: body.binLocation,
-      batchNumber: body.batchNumber,
-      expiryDate: body.expiryDate,
-      
-      // Tags and Classification
-      tags: body.tags,
-      priority: body.priority,
-      isFeatured: body.isFeatured,
     }
     
     // Update the product

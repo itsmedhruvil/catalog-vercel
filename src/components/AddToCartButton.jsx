@@ -18,7 +18,8 @@ export default function AddToCartButton({ product, variant = 'default', classNam
   const isAdmin = useMemo(() => isAdminMode(), [isSignedIn])
 
   // Don't show add to cart button for admins (users in admin mode)
-  if (isAdmin) return null
+  // Return empty fragment to maintain DOM structure and avoid hydration mismatch
+  if (isAdmin) return <></>
 
   const cartItem = cartItems.find(
     item => item.productId === product.id && item.size === (product.size || '')
@@ -26,11 +27,9 @@ export default function AddToCartButton({ product, variant = 'default', classNam
   const isInCart = !!cartItem
   const cartQuantity = cartItem?.quantity || 0
 
-  const isSoldOut = 
-    product.isSoldOut || 
-    (product.calculatedAvailable !== undefined && 
-     product.calculatedAvailable !== '' && 
-     parseInt(product.calculatedAvailable) <= 0)
+  // Use totalQuantity as the single source of truth for stock
+  const totalQty = parseInt(product.totalQuantity) || 0;
+  const isSoldOut = product.isSoldOut || totalQty <= 0;
 
   const handleAddToCart = (e) => {
     e.stopPropagation()

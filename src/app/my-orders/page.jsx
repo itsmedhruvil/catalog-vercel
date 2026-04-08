@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { fetchOrders } from '@/lib/api'
+import { getOrdersByCustomer } from '@/lib/orderSchema'
 import Link from 'next/link'
 
 export const metadata = {
@@ -22,18 +22,11 @@ export default async function MyOrdersPage() {
   
   let orders = []
   try {
-    // Fetch all orders - we'll filter by user email on the client side
-    // or the API can be updated to filter by user
-    orders = await fetchOrders()
-    
-    // Filter orders to only show orders placed by this user
-    // Orders are filtered by customer email matching the user's email
-    orders = orders.filter(order => {
-      return order.customer?.email === userEmail
-    })
-    
-    // Sort by most recent first
-    orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    // Fetch orders directly from database filtered by user's email
+    // This is more efficient than fetching all orders and filtering client-side
+    if (userEmail) {
+      orders = await getOrdersByCustomer(userEmail)
+    }
   } catch (error) {
     console.error('Failed to fetch orders:', error)
   }
@@ -95,13 +88,13 @@ export default async function MyOrdersPage() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="text-sm text-gray-500 mb-1">Pending</div>
               <div className="text-2xl font-bold text-yellow-600">
-                {orders.filter(o => o.status === 'pending' || o.status === 'processing').length}
+                {orders.filter(o => o.orderStatus === 'pending' || o.orderStatus === 'processing').length}
               </div>
             </div>
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="text-sm text-gray-500 mb-1">Completed</div>
               <div className="text-2xl font-bold text-green-600">
-                {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length}
+                {orders.filter(o => o.orderStatus === 'completed' || o.orderStatus === 'delivered').length}
               </div>
             </div>
           </div>
@@ -148,12 +141,12 @@ export default async function MyOrdersPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className="font-semibold text-gray-900">
-                        Order #{order.id?.slice(-6).toUpperCase() || 'N/A'}
+                        Order #{order.orderNumber?.slice(-6).toUpperCase() || 'N/A'}
                       </span>
-                      {getStatusBadge(order.status)}
+                      {getStatusBadge(order.orderStatus)}
                     </div>
                     <div className="text-sm text-gray-500 space-y-1">
-                      <p>Placed on {formatDate(order.createdAt)}</p>
+                      <p>Placed on {formatDate(order.orderDate || order.createdAt)}</p>
                       <p>
                         {order.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0} items •{' '}
                         {formatCurrency(order.totalAmount || 0)}

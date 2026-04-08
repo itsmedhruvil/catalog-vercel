@@ -33,71 +33,20 @@ async function connectDB() {
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const productSchema = new mongoose.Schema(
   {
+    // Core Product Information
     name:            { type: String, required: true, trim: true },
     price:           { type: String, default: '' },
     category:        { type: String, enum: ['branded', 'unbranded'], default: 'unbranded' },
     description:     { type: String, default: '' },
     images:          { type: [String], default: [] },
-    availableQuantity: { type: String, default: '' },
-    totalQuantity: { type: Number, default: 0 },
+    
+    // Stock Management - totalQuantity is the single source of truth
+    totalQuantity:   { type: Number, default: 0 },
+    
+    // Product Specifications
     size:            { type: String, default: '' },
     pcsPerCarton:    { type: String, default: '' },
-    
-    // Delivery Management Fields
     deliveryTime:    { type: String, default: '' },
-    deliveryStatus:  { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
-    deliveryTracking: { type: String, default: '' },
-    deliveryNotes:   { type: String, default: '' },
-    estimatedDelivery: { type: Date },
-    
-    // Analytics Fields
-    salesLast30Days: { type: Number, default: 0 },
-    salesPrevious30Days: { type: Number, default: 0 },
-    totalSales:      { type: Number, default: 0 },
-    views:           { type: Number, default: 0 },
-    lastSoldAt:      { type: Date },
-    createdAt:       { type: Date, default: Date.now },
-    
-    // Inventory Analytics
-    holds:           { type: [{ id: String, customer: String, quantity: String }], default: [] },
-    reorderLevel:    { type: Number, default: 0 },
-    reorderQuantity: { type: Number, default: 0 },
-    
-    // Performance Metrics
-    conversionRate:  { type: Number, default: 0 },
-    returnRate:      { type: Number, default: 0 },
-    avgDeliveryTime: { type: Number, default: 0 }, // in days
-    
-    // Customer Analytics
-    customerReviews: { type: [{ rating: Number, comment: String, date: Date, customerName: String }], default: [] },
-    avgRating:       { type: Number, default: 0 },
-    
-    // Supplier Information
-    supplier:        { type: String, default: '' },
-    supplierContact: { type: String, default: '' },
-    supplierLeadTime: { type: Number, default: 0 }, // in days
-    
-    // Warehouse Management
-    warehouseLocation: { type: String, default: '' },
-    binLocation:       { type: String, default: '' },
-    batchNumber:       { type: String, default: '' },
-    expiryDate:        { type: Date },
-    
-    // Tags and Classification
-    tags:              { type: [String], default: [] },
-    priority:          { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
-    isFeatured:        { type: Boolean, default: false },
-    
-    // Activity Log for tracking stock changes and other events
-    activityLog: [{
-      type: { type: String, enum: ['stock_reduction', 'stock_increase', 'order_confirmed', 'order_cancelled', 'manual_adjustment'], default: 'manual_adjustment' },
-      quantity: { type: Number, default: 0 },
-      reason: { type: String, default: '' },
-      orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
-      orderNumber: { type: String },
-      timestamp: { type: Date, default: Date.now },
-      updatedBy: { type: String, default: 'system' }
-    }],
   },
   {
     timestamps: true,
@@ -107,24 +56,6 @@ const productSchema = new mongoose.Schema(
         ret.id = ret._id.toString()
         delete ret._id
         delete ret.__v
-        // Convert nested ObjectId values to strings (e.g., in activityLog)
-        if (ret.activityLog && Array.isArray(ret.activityLog)) {
-          ret.activityLog = ret.activityLog.map(entry => {
-            const cleanEntry = {}
-            // Copy all fields, converting ObjectId and Date to strings where needed
-            for (const key in entry) {
-              if (key === '_id') continue // Skip _id
-              if (key === 'orderId' && entry[key]) {
-                cleanEntry[key] = entry[key].toString()
-              } else if (key === 'timestamp' && entry[key]) {
-                cleanEntry[key] = entry[key].toISOString()
-              } else {
-                cleanEntry[key] = entry[key]
-              }
-            }
-            return cleanEntry
-          })
-        }
         return ret
       },
     },

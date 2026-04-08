@@ -1,7 +1,7 @@
 'use client'
 
 import { useClerk } from '@clerk/nextjs'
-import { Shield, LogOut, User, Settings } from 'lucide-react'
+import { Shield, LogOut, User, Settings, ShoppingCart, Bell, BarChart3, Package, Truck, Users, ChevronDown } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import useAdminAuth from '@/hooks/useAdminAuth'
 import { useRouter } from 'next/navigation'
@@ -11,6 +11,7 @@ export default function AdminHeader() {
   const { isSignedIn, isAdmin, user } = useAdminAuth()
   const { openUserProfile, signOut } = useClerk()
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showAdminMenu, setShowAdminMenu] = useState(false)
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
@@ -35,42 +36,89 @@ export default function AdminHeader() {
     router.push('/catalog')
   }, [router])
 
+  const adminMenuItems = [
+    { href: '/orders', label: 'Orders', icon: ShoppingCart },
+    { href: '/alerts', label: 'Alerts', icon: Bell },
+    { href: '/orders/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/catalog', label: 'Products', icon: Package },
+    { href: '/clients', label: 'Customers', icon: Users },
+    { href: '/delivery', label: 'Delivery', icon: Truck },
+  ]
+
   return (
-    <div className="fixed top-4 right-16 z-40">
-      <div className="relative">
-        {/* Admin Badge */}
+    <div className="fixed top-4 right-4 z-40">
+      <div className="relative flex items-center gap-2">
+        {/* Admin Menu Button */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              setShowAdminMenu(!showAdminMenu)
+              setShowDropdown(false)
+            }}
+            className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+          >
+            <Settings size={18} className="text-blue-600" />
+            <span className="text-sm font-semibold">Admin</span>
+            <ChevronDown size={16} className={`transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Admin Menu Dropdown */}
+          {showAdminMenu && (
+            <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2">
+              <div className="px-4 py-2 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-900">Admin Panel</p>
+              </div>
+              
+              {adminMenuItems.map((item) => (
+                <button
+                  key={item.href}
+                  onClick={() => {
+                    router.push(item.href)
+                    setShowAdminMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                >
+                  <item.icon size={16} className="text-blue-600" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Admin Badge with User Info */}
         <div className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg">
           <Shield size={18} />
-          <span className="text-sm font-semibold">Admin Mode</span>
+          <span className="text-sm font-semibold hidden sm:inline">Admin</span>
           
           {/* User Info */}
-          <div className="flex items-center gap-2 ml-2 pl-4 border-l border-blue-400">
+          <div className="flex items-center gap-2 ml-1">
             {user?.imageUrl ? (
               <img 
                 src={user.imageUrl} 
                 alt={user.fullName || 'User'} 
-                className="w-8 h-8 rounded-full"
+                className="w-7 h-7 rounded-full"
               />
             ) : (
-              <User size={18} />
+              <User size={16} />
             )}
-            <span className="text-sm hidden sm:inline">
-              {user?.firstName || user?.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Admin'}
-            </span>
           </div>
 
           {/* Sign Out Button */}
           <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            className="ml-2 p-1 hover:bg-blue-500 rounded-full transition-colors"
+            onClick={() => {
+              setShowDropdown(!showDropdown)
+              setShowAdminMenu(false)
+            }}
+            className="ml-1 p-1 hover:bg-blue-500 rounded-full transition-colors"
             title="Sign out"
             disabled={isSigningOut}
           >
-            <LogOut size={16} />
+            <LogOut size={14} />
           </button>
         </div>
 
-        {/* Dropdown Menu */}
+        {/* Sign Out Dropdown */}
         {showDropdown && (
           <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-2">
             <div className="px-4 py-2 border-b border-gray-100">

@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useUser } from '@clerk/nextjs'
 
 const CartContext = createContext(null)
 
@@ -13,29 +14,47 @@ export function useCart() {
 }
 
 export function CartProvider({ children }) {
+  const { user } = useUser()
   const [cartItems, setCartItems] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load cart from localStorage on mount
-  useEffect(() => {
-    const savedCart = localStorage.getItem('cart')
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart))
-      } catch (e) {
-        console.error('Failed to parse cart from localStorage:', e)
-      }
+  // Get user-specific cart key
+  const getCartKey = useCallback(() => {
+    if (user?.primaryEmailAddress?.emailAddress) {
+      return `cart_${user.primaryEmailAddress.emailAddress.replace(/[@.]/g, '_')}`
     }
-    setIsLoading(false)
-  }, [])
+    return 'cart_guest' // Guest cart
+  }, [user])
+
+  // Load cart from localStorage on mount or when user changes
+  useEffect(() => {
+    const loadCart = () => {
+      const cartKey = getCartKey()
+      const savedCart = localStorage.getItem(cartKey)
+      if (savedCart) {
+        try {
+          setCartItems(JSON.parse(savedCart))
+        } catch (e) {
+          console.error('Failed to parse cart from localStorage:', e)
+          setCartItems([])
+        }
+      } else {
+        setCartItems([])
+      }
+      setIsLoading(false)
+    }
+
+    loadCart()
+  }, [getCartKey])
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem('cart', JSON.stringify(cartItems))
+      const cartKey = getCartKey()
+      localStorage.setItem(cartKey, JSON.stringify(cartItems))
     }
-  }, [cartItems, isLoading])
+  }, [cartItems, isLoading, getCartKey])
 
   // Add item to cart
   const addToCart = useCallback((product, quantity = 1, size = '') => {
@@ -61,7 +80,7 @@ export function CartProvider({ children }) {
         price: parseFloat(product.price) || 0,
         quantity,
         size,
-        availableQuantity: parseInt(product.calculatedAvailable || product.availableQuantity || product.totalQuantity || '0')
+        availableQuantity: parseInt(product.totalQuantity || product.calculatedAvailable || '0')
       }
 
       return [...prevItems, newItem]
@@ -94,7 +113,10 @@ export function CartProvider({ children }) {
   // Clear cart
   const clearCart = useCallback(() => {
     setCartItems([])
-  }, [])
+    // Also clear from localStorage
+    const cartKey = getCartKey()
+    localStorage.removeItem(cartKey)
+  }, [getCartKey])
 
   // Get cart totals
   const cartTotals = useCallback(() => {

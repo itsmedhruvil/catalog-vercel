@@ -241,54 +241,17 @@ export async function getOrderById(id) {
   }
 }
 
-// Helper function to update product stock and analytics
-async function updateProductStock(productId, quantityChange, reason, orderId, orderNumber, adjustSales = false) {
+// Helper function to update product stock
+async function updateProductStock(productId, quantityChange, reason) {
   try {
     const product = await Product.findById(productId);
     if (!product) return null;
 
     const newQuantity = Math.max(0, (parseInt(product.totalQuantity) || 0) + quantityChange);
     
-    // Determine if this is a sale (stock reduction) or restoration (stock increase)
-    const isSale = quantityChange < 0;
-    const quantitySold = isSale ? Math.abs(quantityChange) : 0;
-    const quantityRestored = !isSale ? quantityChange : 0;
-    
-    const updateData = {
-      totalQuantity: newQuantity,
-      $push: {
-        activityLog: {
-          type: quantityChange < 0 ? 'stock_reduction' : 'stock_increase',
-          quantity: quantityChange,
-          reason: reason,
-          orderId: orderId,
-          orderNumber: orderNumber,
-          timestamp: new Date(),
-          updatedBy: 'system'
-        }
-      }
-    };
-    
-    // Update sales analytics for sales
-    if (isSale) {
-      updateData.$set = {
-        lastSoldAt: new Date(),
-        salesLast30Days: Math.max(0, (product.salesLast30Days || 0) + quantitySold),
-        totalSales: (product.totalSales || 0) + quantitySold,
-      };
-    }
-    
-    // Adjust sales analytics when stock is restored (cancelled/refunded orders)
-    if (adjustSales && !isSale && quantityRestored > 0) {
-      updateData.$set = {
-        salesLast30Days: Math.max(0, (product.salesLast30Days || 0) - quantityRestored),
-        totalSales: Math.max(0, (product.totalSales || 0) - quantityRestored),
-      };
-    }
-    
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
-      updateData,
+      { totalQuantity: newQuantity },
       { new: true }
     );
     
@@ -300,8 +263,8 @@ async function updateProductStock(productId, quantityChange, reason, orderId, or
 }
 
 // Helper function to reduce product stock (exported for use in orders API)
-export async function reduceProductStock(productId, quantity, reason, orderId, orderNumber) {
-  return updateProductStock(productId, -quantity, reason, orderId, orderNumber);
+export async function reduceProductStock(productId, quantity, reason) {
+  return updateProductStock(productId, -quantity, reason);
 }
 
 // Helper function to check product availability
@@ -374,9 +337,7 @@ export async function createOrder(data) {
       await updateProductStock(
         item.productId,
         -item.quantity,
-        `Order ${order.orderNumber} confirmed`,
-        order._id,
-        order.orderNumber
+        `Order ${order.orderNumber} confirmed`
       );
     }
   }
@@ -477,6 +438,34 @@ export async function updateOrderById(id, updates) {
   await connectDB();
   
   try {
+    // Validate ID
+    if (!id) {
+      throw new Error('Order ID is required');
+    }
+    
+    // For simple status updates, use a simpler approach
+    if (Object.keys(updates).length <= 2 && updates.orderStatus) {
+      // First check if order exists
+      const existingOrder = await Order.findById(id);
+      if (!existingOrder) {
+        console.error(`Order not found with ID: ${id}`);
+        return null;
+      }
+      
+      // Simple status update - just update the status
+      const updateData = {
+        orderStatus: updates.orderStatus
+      };
+      
+      const order = await Order.findByIdAndUpdate(
+        id,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).populate('items.productId', 'name images');
+      
+      return order ? order.toJSON() : null;
+    }
+    
     // Extract special fields that are not part of the order document
     const { statusNotes, updatedBy, statusHistory, ...fieldUpdates } = updates;
     
@@ -590,16 +579,13 @@ export async function updateOrderById(id, updates) {
     // Note: Stock is now reduced immediately when order is created (in orders API)
     // So we only need to restore stock when order is cancelled/refunded, not reduce it again on confirm
     if (order.items && order.items.length > 0) {
-      // If order status changes to cancelled or refunded, restore stock and adjust sales
+      // If order status changes to cancelled or refunded, restore stock
       if (isStatusCancelling || isStatusRefunding) {
         for (const item of order.items) {
           await updateProductStock(
             item.productId,
             item.quantity,
-            `Order ${order.orderNumber} ${isStatusCancelling ? 'cancelled' : 'refunded'} - stock replenished`,
-            order._id,
-            order.orderNumber,
-            true // adjustSales: true - decrement sales analytics
+            `Order ${order.orderNumber} ${isStatusCancelling ? 'cancelled' : 'refunded'} - stock replenished`
           );
         }
         
@@ -618,7 +604,7 @@ export async function updateOrderById(id, updates) {
       }
       
       // If order was previously cancelled/refunded and is now being changed to an active status,
-      // reduce stock again (but don't increment sales as they were already counted)
+      // reduce stock again
       if (isStatusChangingFromCancelled || isStatusChangingFromRefunded) {
         // Only reduce stock if the new status is an active status (not cancelled/refunded)
         if (newStatus !== 'cancelled' && newStatus !== 'refunded') {
@@ -626,9 +612,7 @@ export async function updateOrderById(id, updates) {
             await updateProductStock(
               item.productId,
               -item.quantity,
-              `Order ${order.orderNumber} status changed from ${oldStatus} to ${newStatus}`,
-              order._id,
-              order.orderNumber
+              `Order ${order.orderNumber} status changed from ${oldStatus} to ${newStatus}`
             );
           }
           
@@ -669,16 +653,12 @@ export async function deleteOrderById(id) {
     if (!order) return false;
     
     // Restore stock for all items if the order was confirmed (stock was reduced)
-    // We only restore stock for confirmed orders since pending orders didn't reduce stock
     if (order.orderStatus === 'confirmed' && order.items && order.items.length > 0) {
       for (const item of order.items) {
         await updateProductStock(
           item.productId,
           item.quantity,
-          `Order ${order.orderNumber} deleted - stock replenished`,
-          order._id,
-          order.orderNumber,
-          true // adjustSales: true - decrement sales analytics since order is being removed
+          `Order ${order.orderNumber} deleted - stock replenished`
         );
       }
       console.log(`Stock restored for deleted order ${order.orderNumber}`);

@@ -87,7 +87,7 @@ export default function CatalogClient({
 
   // UI & Auth State - Use only useAdminAuth to avoid duplicate hook calls
   // useAdminAuth internally uses useUser, so we get all auth state from one source
-  const { isSignedIn, user, hasAdminAccess, isAdmin: isAdminValue } = useAdminAuth();
+  const { isSignedIn, user, hasAdminAccess, isAdmin: isAdminValue, isLoaded } = useAdminAuth();
   const isAdmin = isAdminValue;
   const isUserSignedIn = isSignedIn && !isAdmin; // Regular user (not admin)
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -109,38 +109,8 @@ export default function CatalogClient({
   const loadProductsFromDB = useCallback(async () => {
     try {
       const data = await fetchProducts();
-      // Normalize any old data to the new format
-      // totalQuantity is now the single source of truth for stock
-      const normalizedData = data.map((p) => {
-        let migratedHolds = p.holds || [];
-        if (!p.holds && p.stockOnHold && parseInt(p.stockOnHold) > 0) {
-          migratedHolds = [
-            {
-              id: "legacy-hold",
-              customer: "Legacy Hold",
-              quantity: p.stockOnHold,
-            },
-          ];
-        }
-        
-        // Migrate availableQuantity to totalQuantity if needed
-        // totalQuantity is the single source of truth for stock tracking
-        let totalQty = p.totalQuantity;
-        // Check for undefined, null, or 0 (default) - if availableQuantity has a value, use it
-        if (totalQty === undefined || totalQty === null || (totalQty === 0 && p.availableQuantity)) {
-          // Try to use availableQuantity as fallback
-          totalQty = p.availableQuantity !== undefined ? parseInt(p.availableQuantity) || 0 : 0;
-        }
-        
-        return {
-          ...p,
-          totalQuantity: totalQty,
-          holds: migratedHolds,
-          stockOnHold: undefined,
-          availableQuantity: undefined, // Remove old field
-        };
-      });
-      setProducts(normalizedData);
+      // totalQuantity is the single source of truth for stock
+      setProducts(data);
     } catch (error) {
       console.error("Failed to load products from database", error);
       setProducts([]);
@@ -212,22 +182,15 @@ export default function CatalogClient({
       filtered = filtered.filter((p) => p.name.toLowerCase().includes(lowerQ));
     }
 
-    // 3. Inject calculated available stock (Total - Hold)
+    // 3. Calculate available stock (totalQuantity is the single source of truth)
     return filtered.map((p) => {
-      const t = parseInt(p.totalQuantity);
-      const holdsArr = p.holds || [];
-      const totalHold = holdsArr.reduce(
-        (sum, h) => sum + (parseInt(h.quantity) || 0),
-        0,
-      );
-      const calculatedAvailable = isNaN(t)
-        ? ""
-        : Math.max(0, t - totalHold).toString();
+      const totalQty = parseInt(p.totalQuantity) || 0;
+      const calculatedAvailable = totalQty.toString();
 
       return {
         ...p,
         calculatedAvailable,
-        totalHold,
+        totalQuantity: totalQty,
       };
     });
   }, [products, filter, sharedIds, searchQuery]);
@@ -242,9 +205,10 @@ export default function CatalogClient({
   }, [displayedProducts, showTotal, effectiveHidePrice]);
 
   const formattedTotal =
+    "₹" +
     new Intl.NumberFormat("en-IN", {
       maximumFractionDigits: 0,
-    }).format(calculatedTotal) + " pts";
+    }).format(calculatedTotal);
 
   // --- HELPERS ---
   const showToast = (msg) => {
@@ -394,7 +358,8 @@ export default function CatalogClient({
               </button>
             ))}
 
-            {isAdmin && (
+            {/* Always render the button but hide it until admin status is confirmed to avoid hydration mismatch */}
+            {isLoaded && isAdmin && (
               <button
                 onClick={() => setActiveModal("categories")}
                 className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
@@ -458,8 +423,8 @@ export default function CatalogClient({
         )}
       </main>
 
-      {/* FLOATING ACTION BUTTON */}
-      {isAdmin && sharedIds.length === 0 && !isSelectionMode && (
+      {/* FLOATING ACTION BUTTON - Only show after auth is loaded to avoid hydration mismatch */}
+      {isLoaded && isAdmin && sharedIds.length === 0 && !isSelectionMode && (
         <button
           onClick={() => {
             setCurrentProduct(null);
@@ -662,10 +627,7 @@ function ProductCard({
           ) : (
             !hidePrice && (
               <p className="text-[15px] font-semibold text-slate-900 pt-1.5 truncate">
-                {displayPrice}{" "}
-                <span className="text-xs font-normal text-slate-500">
-                  pts
-                </span>
+                ₹{displayPrice}
               </p>
             )
           )}

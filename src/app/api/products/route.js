@@ -19,38 +19,17 @@ export async function POST(request) {
   try {
     const data = await request.json()
     
-    // Ensure totalQuantity is properly set (default to 0 if not provided)
-    // This is the single source of truth for stock tracking
+    // Ensure required fields and totalQuantity is properly set
     const productData = {
-      ...data,
+      name: data.name || 'Untitled Product',
+      price: data.price || '',
+      category: data.category || 'unbranded',
+      description: data.description || '',
+      images: data.images || [],
       totalQuantity: data.totalQuantity !== undefined ? parseInt(data.totalQuantity) || 0 : 0,
-      salesLast30Days: data.salesLast30Days || 0,
-      salesPrevious30Days: data.salesPrevious30Days || 0,
-      totalSales: data.totalSales || 0,
-      views: data.views || 0,
-      lastSoldAt: data.lastSoldAt || null,
-      holds: data.holds || [],
-      reorderLevel: data.reorderLevel || 0,
-      reorderQuantity: data.reorderQuantity || 0,
-      conversionRate: data.conversionRate || 0,
-      returnRate: data.returnRate || 0,
-      avgDeliveryTime: data.avgDeliveryTime || 0,
-      customerReviews: data.customerReviews || [],
-      avgRating: data.avgRating || 0,
-      supplier: data.supplier || '',
-      supplierContact: data.supplierContact || '',
-      supplierLeadTime: data.supplierLeadTime || 0,
-      warehouseLocation: data.warehouseLocation || '',
-      binLocation: data.binLocation || '',
-      batchNumber: data.batchNumber || '',
-      expiryDate: data.expiryDate || null,
-      tags: data.tags || [],
-      priority: data.priority || 'medium',
-      isFeatured: data.isFeatured || false,
-      deliveryStatus: data.deliveryStatus || 'pending',
-      deliveryTracking: data.deliveryTracking || '',
-      deliveryNotes: data.deliveryNotes || '',
-      estimatedDelivery: data.estimatedDelivery || null,
+      size: data.size || '',
+      pcsPerCarton: data.pcsPerCarton || '',
+      deliveryTime: data.deliveryTime || '',
     }
     
     const product = await addProduct(productData)

@@ -27,24 +27,22 @@ export default function SimpleInventoryAlerts({ products = [], setProducts, show
     const detectedAlerts = [];
     
     products.forEach(product => {
+      // totalQuantity is the single source of truth for stock
       const stock = parseInt(product.totalQuantity) || 0;
-      const holds = product.holds || [];
-      const totalHold = holds.reduce((sum, h) => sum + (parseInt(h.quantity) || 0), 0);
-      const availableStock = Math.max(0, stock - totalHold);
 
       // Low Stock Alert
-      if (availableStock <= 5 && availableStock > 0) {
+      if (stock <= 5 && stock > 0) {
         detectedAlerts.push({
           id: `${product.id}-low-stock`,
           type: 'low-stock',
           severity: 'warning',
           title: 'Low Stock Alert',
-          message: `${product.name} has only ${availableStock} units available`,
+          message: `${product.name} has only ${stock} units in stock`,
           product: product.name,
           category: product.category,
           timestamp: new Date().toISOString()
         });
-      } else if (availableStock === 0) {
+      } else if (stock === 0) {
         detectedAlerts.push({
           id: `${product.id}-out-of-stock`,
           type: 'out-of-stock',

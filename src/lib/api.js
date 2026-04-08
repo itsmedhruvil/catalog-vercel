@@ -83,7 +83,10 @@ export async function updateOrder(id, data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error('Failed to update order')
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to update order (status: ${res.status})`)
+  }
   return res.json()
 }
 

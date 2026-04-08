@@ -76,7 +76,7 @@ export async function POST(request) {
     // to prevent overselling
     const order = await createOrder(data);
     
-    // Reduce stock immediately for all orders (not just confirmed ones)
+    // Reduce stock immediately for all orders
     // This prevents overselling and keeps inventory accurate
     if (order.items && order.items.length > 0) {
       const { reduceProductStock } = await import('@/lib/orderSchema');
@@ -84,9 +84,7 @@ export async function POST(request) {
         await reduceProductStock(
           item.productId,
           item.quantity,
-          `Order ${order.orderNumber} placed`,
-          order._id,
-          order.orderNumber
+          `Order ${order.orderNumber} placed`
         );
       }
     }
