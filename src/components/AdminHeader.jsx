@@ -36,14 +36,13 @@ export default function AdminHeader() {
     router.push('/catalog')
   }, [router])
 
-  const adminMenuItems = [
-    { href: '/orders', label: 'Orders', icon: ShoppingCart },
-    { href: '/alerts', label: 'Alerts', icon: Bell },
-    { href: '/orders/analytics', label: 'Analytics', icon: BarChart3 },
-    { href: '/catalog', label: 'Products', icon: Package },
-    { href: '/clients', label: 'Customers', icon: Users },
-    { href: '/delivery', label: 'Delivery', icon: Truck },
-  ]
+const adminMenuItems = [
+  { href: '/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/orders/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/catalog', label: 'Products', icon: Package },
+  { href: '/clients', label: 'Customers', icon: Users },
+  { href: '/delivery', label: 'Delivery', icon: Truck },
+]
 
   return (
     <div className="fixed top-4 right-4 z-40">

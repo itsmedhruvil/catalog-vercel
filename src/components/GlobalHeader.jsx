@@ -62,14 +62,13 @@ export default function GlobalHeader() {
   const isCatalogPage = pathname === '/catalog'
 
   // Define menu items based on user type
-  const adminMenuItems = [
-    { icon: <Home size={20} />, label: 'Catalog', path: '/catalog' },
-    { icon: <Package size={20} />, label: 'Orders Management', path: '/orders' },
-    { icon: <User size={20} />, label: 'Client Database', path: '/clients' },
-    { icon: <BarChart3 size={20} />, label: 'Analytics Dashboard', path: '/analytics' },
-    { icon: <Bell size={20} />, label: 'Inventory Alerts', path: '/alerts' },
-    { icon: <Truck size={20} />, label: 'Delivery Management', path: '/delivery' },
-  ]
+const adminMenuItems = [
+  { icon: <Home size={20} />, label: 'Catalog', path: '/catalog' },
+  { icon: <Package size={20} />, label: 'Orders Management', path: '/orders' },
+  { icon: <User size={20} />, label: 'Client Database', path: '/clients' },
+  { icon: <BarChart3 size={20} />, label: 'Analytics Dashboard', path: '/analytics' },
+  { icon: <Truck size={20} />, label: 'Delivery Management', path: '/delivery' },
+]
 
   const userMenuItems = [
     { icon: <Home size={20} />, label: 'Catalog', path: '/catalog' },

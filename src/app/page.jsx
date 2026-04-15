@@ -7,9 +7,13 @@ export default async function Home() {
   
   // If user is signed in, check if they're an admin
   if (userId) {
-    const userEmail = sessionClaims?.email
+    const userEmail =
+      sessionClaims?.email ||
+      sessionClaims?.email_address ||
+      sessionClaims?.primary_email_address ||
+      sessionClaims?.primaryEmailAddress
     const adminEmails = getAdminEmails()
-    const isAdmin = userEmail && adminEmails.includes(userEmail.toLowerCase())
+    const isAdmin = userEmail && adminEmails.includes(String(userEmail).toLowerCase())
     
     // Redirect admin users to alerts page instead of catalog
     if (isAdmin) {

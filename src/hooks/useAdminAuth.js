@@ -9,7 +9,8 @@ export default function useAdminAuth() {
   const { signOut } = useClerk()
   const [adminModeConfirmed, setAdminModeConfirmed] = useState(false)
 
-  const userEmail = user?.primaryEmailAddress?.emailAddress
+  // Get email from user object - handle both regular and OAuth (Google) authentication
+  const userEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || user?.email
 
   // Check if the user's email is in the admin list
   const hasAdminAccess = useMemo(() => {
@@ -18,6 +19,7 @@ export default function useAdminAuth() {
   }, [isSignedIn, userEmail])
 
   // Enable/disable admin mode based on access
+  // FIX: Add userEmail to dependency array to re-run when email becomes available after Google login
   useEffect(() => {
     if (typeof window === 'undefined') return
     
@@ -29,12 +31,13 @@ export default function useAdminAuth() {
       // User signed out - disable admin mode
       disableAdminMode()
       setAdminModeConfirmed(false)
-    } else if (isSignedIn && !hasAdminAccess) {
-      // User is signed in but doesn't have admin access
+    } else if (isSignedIn && !hasAdminAccess && userEmail) {
+      // User is signed in but doesn't have admin access (email verified)
       disableAdminMode()
       setAdminModeConfirmed(false)
     }
-  }, [isSignedIn, hasAdminAccess])
+    // Only run this effect when we actually have email data for signed in users
+  }, [isSignedIn, hasAdminAccess, userEmail])
 
   const handleSignOut = useCallback(async (options) => {
     // Use Clerk's signOut with options if provided
@@ -45,16 +48,16 @@ export default function useAdminAuth() {
 
   // Determine if user is admin - check both hasAdminAccess and localStorage
   const isAdmin = useMemo(() => {
+    // Always check actual access first when user is loaded
+    if (isLoaded && hasAdminAccess) return true
     // If we've confirmed admin mode in this session, use that
     if (adminModeConfirmed) return true
-    // Otherwise check hasAdminAccess
-    if (hasAdminAccess) return true
-    // Fall back to localStorage check for page refreshes
-    if (typeof window !== 'undefined') {
+    // Fall back to localStorage check for page refreshes while loading
+    if (typeof window !== 'undefined' && !isLoaded) {
       return checkAdminMode()
     }
     return false
-  }, [hasAdminAccess, adminModeConfirmed])
+  }, [isLoaded, hasAdminAccess, adminModeConfirmed])
 
   // Memoize the return value to prevent unnecessary re-renders in consuming components
   return useMemo(() => ({

@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BarChart3, TrendingUp, TrendingDown, Users, CreditCard, Truck, Calendar, DollarSign, Package, Filter, Download, RefreshCw } from "lucide-react";
-import { isAdminMode } from "@/lib/admin";
+import useAdminAuth from "@/hooks/useAdminAuth";
 import { fetchOrderAnalytics, fetchOrdersByStatus, fetchOrdersByDateRange } from "@/lib/api";
 
 export default function OrdersAnalyticsPage() {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, isLoaded } = useAdminAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -17,38 +17,32 @@ export default function OrdersAnalyticsPage() {
   });
 
   useEffect(() => {
-    // Check if user is in admin mode using persistent state
-    const checkAdmin = () => {
-      const adminEnabled = isAdminMode();
-      setIsAdmin(adminEnabled);
-      
-      if (!adminEnabled) {
+    // Wait for auth to load before checking admin status
+    if (isLoaded) {
+      if (!isAdmin) {
         // Redirect to main catalog if not in admin mode
-        router.push('/');
+        router.push('/catalog');
+        return;
       }
-    };
-    
-    // Fetch analytics data
-    const loadAnalytics = async () => {
-      try {
-        const analyticsData = await fetchOrderAnalytics();
-        setAnalytics(analyticsData);
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      
+      // Fetch analytics data
+      const loadAnalytics = async () => {
+        try {
+          const analyticsData = await fetchOrderAnalytics();
+          setAnalytics(analyticsData);
+        } catch (error) {
+          console.error('Error fetching analytics:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    checkAdmin();
-    loadAnalytics();
-  }, [router]);
+      loadAnalytics();
+    }
+  }, [isAdmin, isLoaded, router]);
 
-  if (!isAdmin) {
-    return null; // Will redirect automatically in useEffect
-  }
-
-  if (loading) {
+  // Show loading state while checking auth
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -57,6 +51,10 @@ export default function OrdersAnalyticsPage() {
         </div>
       </div>
     );
+  }
+
+  if (!isAdmin) {
+    return null; // Will redirect automatically in useEffect
   }
 
   const formatCurrency = (amount) => {

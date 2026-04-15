@@ -2,6 +2,29 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+type SessionClaimsLike = {
+  email?: string;
+  email_address?: string;
+  primary_email_address?: string;
+  primaryEmailAddress?: string;
+};
+
+const getUserEmailFromSessionClaims = (
+  sessionClaims: SessionClaimsLike | null | undefined,
+): string | undefined => {
+  const rawEmail =
+    sessionClaims?.email ??
+    sessionClaims?.email_address ??
+    sessionClaims?.primary_email_address ??
+    sessionClaims?.primaryEmailAddress;
+
+  if (!rawEmail || typeof rawEmail !== "string") {
+    return undefined;
+  }
+
+  return rawEmail.trim().toLowerCase();
+};
+
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
 
@@ -23,7 +46,9 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId, sessionClaims } = await auth();
 
   // Get user's email from session claims
-  const userEmail = sessionClaims?.email as string | undefined;
+  const userEmail = getUserEmailFromSessionClaims(
+    sessionClaims as SessionClaimsLike | undefined,
+  );
 
   // Admin email - only this email gets admin access
   const adminEmails: string[] = (
@@ -33,7 +58,7 @@ export default clerkMiddleware(async (auth, req) => {
     .map((e: string) => e.trim().toLowerCase());
 
   // Check if user is admin
-  const isAdmin = userEmail && adminEmails.includes(userEmail.toLowerCase());
+  const isAdmin = !!userEmail && adminEmails.includes(userEmail);
 
   // Check if this is a customer-specific route (my-orders, checkout)
   const pathname = req.nextUrl.pathname;

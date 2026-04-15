@@ -60,7 +60,7 @@ export default async function ProductPage({ params }) {
 
           {/* Action Buttons Section - Full Width */}
           <ProductPageActions 
-            productName={product.name}
+              productName={product.name}
             productId={product.id}
           />
         </div>

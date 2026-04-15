@@ -18,14 +18,18 @@ export default async function MyOrdersPage() {
   
   // Get user's email from session claims
   const { sessionClaims } = await auth()
-  const userEmail = sessionClaims?.email
+  const userEmail =
+    sessionClaims?.email ||
+    sessionClaims?.email_address ||
+    sessionClaims?.primary_email_address ||
+    sessionClaims?.primaryEmailAddress
   
   let orders = []
   try {
     // Fetch orders directly from database filtered by user's email
     // This is more efficient than fetching all orders and filtering client-side
     if (userEmail) {
-      orders = await getOrdersByCustomer(userEmail)
+      orders = await getOrdersByCustomer(String(userEmail))
     }
   } catch (error) {
     console.error('Failed to fetch orders:', error)
