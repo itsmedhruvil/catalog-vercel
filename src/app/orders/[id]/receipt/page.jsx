@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Printer, Download, Mail, Share2, Eye, EyeOff } from "lucide-react";
-import { isAdminMode } from "@/lib/admin";
+import useAdminAuth from "@/hooks/useAdminAuth";
 import { fetchOrderById } from "@/lib/api";
 
 export default function OrderReceiptPage() {
@@ -11,19 +11,13 @@ export default function OrderReceiptPage() {
   const params = useParams();
   const orderId = params.id;
   
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, isLoaded } = useAdminAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(true);
   const [isCustomer, setIsCustomer] = useState(false);
 
   useEffect(() => {
-    // Check admin state
-    const checkAdmin = () => {
-      const adminEnabled = isAdminMode();
-      setIsAdmin(adminEnabled);
-    };
-    
     // Check if this is a customer viewing their own order
     const checkCustomerAccess = () => {
       // Allow access if coming from checkout (order confirmation)
@@ -54,17 +48,20 @@ export default function OrderReceiptPage() {
       }
     };
 
-    checkAdmin();
-    
-    // Allow access for admin or customer
-    if (!checkCustomerAccess() && !isAdmin) {
-      // Redirect non-admin, non-customer users to catalog
-      router.push('/catalog');
-      return;
+    // Wait for auth to load before checking admin status
+    if (isLoaded) {
+      const hasCustomerAccess = checkCustomerAccess();
+      
+      // Allow access for admin or customer
+      if (!hasCustomerAccess && !isAdmin) {
+        // Redirect non-admin, non-customer users to catalog
+        router.push('/catalog');
+        return;
+      }
+      
+      loadOrder();
     }
-    
-    loadOrder();
-  }, [router, orderId]);
+  }, [router, orderId, isLoaded, isAdmin]);
 
   // Allow access for admin or customer
   if (!isAdmin && !isCustomer) {

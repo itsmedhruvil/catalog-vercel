@@ -19,8 +19,8 @@ export const getAdminEmails = () => {
 export const isAdminEmail = (email) => {
   if (!email) return false;
   const adminEmails = getAdminEmails();
-  // Only allow specific admin emails - no backward compatibility for security
-  return adminEmails.includes(email.toLowerCase());
+  // Only allow specific admin emails, or any if in development
+  return adminEmails.includes(email.toLowerCase()) || process.env.NODE_ENV === 'development';
 };
 
 // Check if user is in admin mode (client-side)

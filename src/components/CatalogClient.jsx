@@ -59,6 +59,7 @@ import OffCanvasMenu from "./OffCanvasMenu";
 export default function CatalogClient({
   initialSharedIds = [],
   initialFilter = "all",
+  initialProducts = [],
 }) {
   const router = useRouter();
 
@@ -74,7 +75,7 @@ export default function CatalogClient({
   };
 
   // --- STATE ---
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(initialProducts);
   const [categories, setCategories] = useState(["branded", "unbranded"]);
   const [filter, setFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");

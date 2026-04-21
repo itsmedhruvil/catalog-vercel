@@ -1,4 +1,5 @@
 import CatalogClient from '@/components/CatalogClient'
+import { readProducts } from '@/lib/db'
 
 export default async function CatalogPage({ searchParams }) {
   const resolvedSearchParams = await searchParams
@@ -7,5 +8,7 @@ export default async function CatalogPage({ searchParams }) {
     : []
   const filterParam = resolvedSearchParams?.filter || 'all'
 
-  return <CatalogClient initialSharedIds={sharedIds} initialFilter={filterParam} />
+  const initialProducts = await readProducts()
+
+  return <CatalogClient initialSharedIds={sharedIds} initialFilter={filterParam} initialProducts={initialProducts} />
 }
