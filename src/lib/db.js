@@ -67,19 +67,45 @@ const Product = mongoose.models.Product || mongoose.model('Product', productSche
 // Export Product for use in other modules (like orderSchema.js)
 export { Product }
 
+// ─── Serialization helper ───────────────────────────────────────────────────
+
+function deepSerialize(obj) {
+  if (obj === null || obj === undefined) return obj
+  
+  if (obj._bsontype === 'ObjectId') {
+    return obj.toString()
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepSerialize(item))
+  }
+  
+  if (typeof obj === 'object') {
+    const serialized = {}
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        serialized[key] = deepSerialize(obj[key])
+      }
+    }
+    return serialized
+  }
+  
+  return obj
+}
+
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
 export async function readProducts() {
   await connectDB()
   const products = await Product.find().sort({ createdAt: -1 })
-  return products.map(p => p.toJSON())
+  return products.map(p => deepSerialize(p.toJSON()))
 }
 
 export async function getProductById(id) {
   await connectDB()
   try {
     const product = await Product.findById(id)
-    return product ? product.toJSON() : null
+    return product ? deepSerialize(product.toJSON()) : null
   } catch {
     return null
   }
@@ -88,7 +114,7 @@ export async function getProductById(id) {
 export async function addProduct(data) {
   await connectDB()
   const product = await Product.create(data)
-  return product.toJSON()
+  return deepSerialize(product.toJSON())
 }
 
 export async function updateProductById(id, updates) {
@@ -99,7 +125,7 @@ export async function updateProductById(id, updates) {
       { $set: updates },
       { new: true, runValidators: true }
     )
-    return product ? product.toJSON() : null
+    return product ? deepSerialize(product.toJSON()) : null
   } catch {
     return null
   }

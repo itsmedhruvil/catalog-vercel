@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
 import { 
@@ -17,22 +17,23 @@ import {
   Truck,
   Package,
   Home,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Users,
 } from 'lucide-react'
 import useAdminAuth from '@/hooks/useAdminAuth'
 import { useCart } from '@/context/CartContext'
 
 export default function GlobalHeader() {
+  const [isMounted, setIsMounted] = useState(false)
+  
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   // Get pathname first to check if we should render
   const pathname = usePathname()
-  
-  // Early return BEFORE any other hooks if on sign-in/sign-up pages
-  // This ensures we don't violate Rules of Hooks
-  if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
-    return null
-  }
 
-  // All hooks must be called after the early return check
+  // All hooks must be called
   const { isSignedIn, isAdmin, user } = useAdminAuth()
   const { signOut, openUserProfile } = useClerk()
   const router = useRouter()
@@ -53,22 +54,25 @@ export default function GlobalHeader() {
     }
   }, [signOut, isSigningOut])
 
-  const handleGoToCatalog = useCallback(() => {
+  const handleGoToHome = useCallback(() => {
     setShowDropdown(false)
-    router.push('/catalog')
-  }, [router])
+    router.push(isAdmin ? '/admin' : '/catalog')
+  }, [router, isAdmin])
 
   const isProductPage = pathname?.startsWith('/product/')
   const isCatalogPage = pathname === '/catalog'
+  const displayIsAdmin = isMounted && isAdmin
 
   // Define menu items based on user type
-const adminMenuItems = [
-  { icon: <Home size={20} />, label: 'Catalog', path: '/catalog' },
-  { icon: <Package size={20} />, label: 'Orders Management', path: '/orders' },
-  { icon: <User size={20} />, label: 'Client Database', path: '/clients' },
-  { icon: <BarChart3 size={20} />, label: 'Analytics Dashboard', path: '/analytics' },
-  { icon: <Truck size={20} />, label: 'Delivery Management', path: '/delivery' },
-]
+  const adminMenuItems = [
+    { icon: <Shield size={20} />, label: 'Admin Home', path: '/admin' },
+    { icon: <Package size={20} />, label: 'Products', path: '/catalog' },
+    { icon: <ShoppingCart size={20} />, label: 'Orders', path: '/orders' },
+    { icon: <Bell size={20} />, label: 'Alerts', path: '/alerts' },
+    { icon: <Users size={20} />, label: 'Clients', path: '/clients' },
+    { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/analytics' },
+    { icon: <Truck size={20} />, label: 'Delivery', path: '/delivery' },
+  ]
 
   const userMenuItems = [
     { icon: <Home size={20} />, label: 'Catalog', path: '/catalog' },
@@ -77,7 +81,12 @@ const adminMenuItems = [
 
   // Always show user menu items for non-admin users (including logged out users)
   // Logged out users will be redirected to sign-in when they try to access my-orders
-  const menuItems = isAdmin ? adminMenuItems : userMenuItems
+  const menuItems = displayIsAdmin ? adminMenuItems : userMenuItems
+
+  // Hide the app chrome on auth pages after every hook has been registered.
+  if (isMounted && (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up'))) {
+    return null
+  }
 
   return (
     <>
@@ -87,11 +96,11 @@ const adminMenuItems = [
           <div className="flex items-center justify-between h-16">
             {/* Logo / Brand */}
             <button 
-              onClick={() => router.push('/catalog')}
+              onClick={() => router.push(isAdmin ? '/admin' : '/catalog')}
               className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"
             >
-              <Home size={20} />
-              <span className="hidden sm:inline">Catalog</span>
+              {displayIsAdmin ? <Shield size={20} /> : <Home size={20} />}
+              <span className="hidden sm:inline">{displayIsAdmin ? 'Admin' : 'Catalog'}</span>
             </button>
 
             {/* Right Side Actions */}
@@ -113,7 +122,7 @@ const adminMenuItems = [
               )}
 
               {/* Cart Button - Only for non-admin users */}
-              {!isAdmin && itemCount > 0 && (
+              {!displayIsAdmin && itemCount > 0 && (
                 <button
                   onClick={() => openCart()}
                   className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
@@ -127,7 +136,7 @@ const adminMenuItems = [
               )}
 
               {/* Sign In / Admin Badge */}
-              {isSignedIn && isAdmin && (
+              {isSignedIn && displayIsAdmin && (
                 <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-full text-sm font-medium">
                   <Shield size={14} />
                   <span className="hidden sm:inline">Admin</span>
@@ -181,11 +190,11 @@ const adminMenuItems = [
                         </button>
                         
                         <button
-                          onClick={handleGoToCatalog}
+                          onClick={handleGoToHome}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
                         >
                           <Settings size={16} />
-                          Go to Catalog
+                          {isAdmin ? 'Admin Dashboard' : 'Go to Catalog'}
                         </button>
                         
                         <hr className="my-2 border-gray-100" />
@@ -264,7 +273,7 @@ const adminMenuItems = [
 
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
               <p className="text-xs text-gray-400 text-center">
-                {isAdmin ? 'Admin Mode Active' : 'Viewer Mode'}
+                {displayIsAdmin ? 'Admin Mode Active' : 'Viewer Mode'}
               </p>
             </div>
           </div>

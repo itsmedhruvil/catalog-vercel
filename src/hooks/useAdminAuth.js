@@ -9,7 +9,7 @@ export default function useAdminAuth() {
   const { signOut } = useClerk()
   const [adminModeConfirmed, setAdminModeConfirmed] = useState(false)
 
-  // Get email from user object - handle both regular and OAuth (Google) authentication
+  // Get email from user object
   const userEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || user?.email
 
   // Check if the user's email is in the admin list
@@ -19,7 +19,6 @@ export default function useAdminAuth() {
   }, [isSignedIn, userEmail])
 
   // Enable/disable admin mode based on access
-  // FIX: Add userEmail to dependency array to re-run when email becomes available after Google login
   useEffect(() => {
     if (typeof window === 'undefined') return
     

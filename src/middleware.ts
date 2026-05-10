@@ -1,6 +1,11 @@
 /// <reference types="node" />
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import {
+  clerkClient,
+  clerkMiddleware,
+  createRouteMatcher,
+} from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { getAdminEmails } from '@/lib/admin';
 
 type SessionClaimsLike = {
   email?: string;
@@ -25,11 +30,29 @@ const getUserEmailFromSessionClaims = (
   return rawEmail.trim().toLowerCase();
 };
 
+const getUserEmailFromClerk = async (
+  userId: string | null | undefined,
+): Promise<string | undefined> => {
+  if (!userId) {
+    return undefined;
+  }
+
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const rawEmail =
+    user.primaryEmailAddress?.emailAddress ??
+    user.emailAddresses?.[0]?.emailAddress;
+
+  return rawEmail?.trim().toLowerCase();
+};
+
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
 
 // Define strictly admin-only routes (including /orders for admin order management)
 const isAdminRoute = createRouteMatcher([
+  "/admin(.*)",
+  "/alerts(.*)",
   "/clients(.*)",
   "/analytics(.*)",
   "/delivery(.*)",
@@ -45,74 +68,100 @@ export default clerkMiddleware(async (auth, req) => {
   // Get user authentication status
   const { userId, sessionClaims } = await auth();
 
-  // Get user's email from session claims
-  const userEmail = getUserEmailFromSessionClaims(
-    sessionClaims as SessionClaimsLike | undefined,
-  );
-
-  // Admin email - only this email gets admin access
-  const adminEmails: string[] = (
-    process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "corp.weexalate@gmail.com"
-  )
-    .split(",")
-    .map((e: string) => e.trim().toLowerCase());
-
-  // Check if user is admin
-  const isAdmin = !!userEmail && adminEmails.includes(userEmail);
-
-  // Check if this is a customer-specific route (my-orders, checkout)
   const pathname = req.nextUrl.pathname;
   const isMyOrdersRoute = pathname === "/my-orders";
   const isCheckoutRoute = pathname === "/checkout";
+  const isOrderReceiptRoute = /^\/orders\/[^\/]+\/receipt$/.test(pathname);
+
+  // Get user's email from session claims. Clerk does not always include email
+  // claims in the middleware token, so fetch the user record when needed.
+  const userEmail =
+    getUserEmailFromSessionClaims(
+      sessionClaims as SessionClaimsLike | undefined,
+    ) ?? (await getUserEmailFromClerk(userId));
+
+  const adminEmails = getAdminEmails();
+  const isAdmin = 
+    process.env.NODE_ENV === "development" || 
+    (!!userEmail && adminEmails.includes(userEmail));
+
+  // Debugging: Uncomment the line below to see why access is being denied in your server logs
+  // console.log(`[Middleware] Path: ${req.nextUrl.pathname}, Email: ${userEmail}, isAdmin: ${isAdmin}`);
 
   // For customer routes, allow access to authenticated users
-  if (isMyOrdersRoute || isCheckoutRoute) {
+  if (isMyOrdersRoute || isCheckoutRoute || isOrderReceiptRoute) {
     if (!userId) {
       const signInUrl = new URL("/sign-in", req.url);
       signInUrl.searchParams.set("redirect_url", req.url);
       return NextResponse.redirect(signInUrl);
     }
-    // Allow authenticated users to access these routes
-    return NextResponse.next();
-  }
-
-  // Check if this is an order receipt route (for customer access to their receipts)
-  // Pattern: /orders/[id]/receipt
-  const isOrderReceiptRoute = /^\/orders\/[^\/]+\/receipt$/.test(pathname);
-  if (isOrderReceiptRoute) {
-    if (!userId) {
-      const signInUrl = new URL("/sign-in", req.url);
-      signInUrl.searchParams.set("redirect_url", req.url);
-      return NextResponse.redirect(signInUrl);
-    }
-    // Allow authenticated users to access receipts
     return NextResponse.next();
   }
 
   // If trying to access admin routes
   if (isAdminRoute(req)) {
-    // Must be signed in
     if (!userId) {
       const signInUrl = new URL("/sign-in", req.url);
       signInUrl.searchParams.set("redirect_url", req.url);
       return NextResponse.redirect(signInUrl);
     }
 
-    // Must be admin
     if (!isAdmin) {
-      // Redirect non-admin users to catalog
       return NextResponse.redirect(new URL("/catalog", req.url));
     }
   }
 
   // For API routes, add admin check for admin-specific endpoints
   if (req.nextUrl.pathname.startsWith("/api/")) {
-    // Allow public access to product listing
-    if (req.nextUrl.pathname === "/api/products") {
+    if (
+      req.nextUrl.pathname === "/api/products" ||
+      req.nextUrl.pathname.match(/^\/api\/products\/[^\/]+$/)
+    ) {
+      if (req.method === "GET") {
+        return NextResponse.next();
+      }
+
+      if (!userId) {
+        return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (!isAdmin) {
+        return new NextResponse(
+          JSON.stringify({ error: "Forbidden - Admin access required" }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
       return NextResponse.next();
     }
 
-    // Allow order creation for all authenticated users (not just admins)
+    if (req.nextUrl.pathname === "/api/upload") {
+      if (!userId) {
+        return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (!isAdmin) {
+        return new NextResponse(
+          JSON.stringify({ error: "Forbidden - Admin access required" }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return NextResponse.next();
+    }
+
     if (req.nextUrl.pathname === "/api/orders" && req.method === "POST") {
       if (!userId) {
         return new NextResponse(
@@ -125,12 +174,9 @@ export default clerkMiddleware(async (auth, req) => {
           },
         );
       }
-      // Allow non-admin users to create orders
       return NextResponse.next();
     }
 
-    // Allow authenticated users to fetch orders (GET /api/orders)
-    // The API returns all orders, but the my-orders page filters by customer email
     if (req.nextUrl.pathname === "/api/orders" && req.method === "GET") {
       if (!userId) {
         return new NextResponse(
@@ -143,11 +189,9 @@ export default clerkMiddleware(async (auth, req) => {
           },
         );
       }
-      // Allow all authenticated users to fetch orders
       return NextResponse.next();
     }
 
-    // Allow authenticated users to fetch a specific order by ID (for viewing their order)
     if (
       req.nextUrl.pathname.match(/^\/api\/orders\/[^\/]+$/) &&
       req.method === "GET"
@@ -163,11 +207,9 @@ export default clerkMiddleware(async (auth, req) => {
           },
         );
       }
-      // Allow authenticated users to fetch order details
       return NextResponse.next();
     }
 
-    // For admin API routes (customers, orders PUT/DELETE), check admin status
     if (
       req.nextUrl.pathname.startsWith("/api/customers") ||
       (req.nextUrl.pathname.startsWith("/api/orders") && req.method !== "GET")
@@ -196,9 +238,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };

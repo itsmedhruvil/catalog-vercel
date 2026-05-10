@@ -89,7 +89,14 @@ export default function CatalogClient({
   // UI & Auth State - Use only useAdminAuth to avoid duplicate hook calls
   // useAdminAuth internally uses useUser, so we get all auth state from one source
   const { isSignedIn, user, hasAdminAccess, isAdmin: isAdminValue, isLoaded } = useAdminAuth();
-  const isAdmin = isAdminValue;
+  
+  // Hydration guard: track if component has mounted to prevent mismatches
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+  
+  const isAdmin = isMounted ? isAdminValue : false;
   const isUserSignedIn = isSignedIn && !isAdmin; // Regular user (not admin)
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState(new Set());
@@ -159,6 +166,19 @@ export default function CatalogClient({
       setHidePrice(true);
     }
   }, [categories]);
+
+  useEffect(() => {
+    if (!isLoaded || !isAdmin) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("action") === "add-product") {
+      setCurrentProduct(null);
+      setActiveModal("add");
+      params.delete("action");
+      const query = params.toString();
+      router.replace(query ? `/catalog?${query}` : "/catalog");
+    }
+  }, [isLoaded, isAdmin, router]);
 
   // --- LOAD DATA ON MOUNT ---
   useEffect(() => {

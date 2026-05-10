@@ -108,7 +108,7 @@ export default function LoginRequiredModal({ isOpen, onClose, feature = 'order' 
             className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-[1.02]"
           >
             <LogIn size={20} />
-            Sign In with Google
+            Sign In
           </a>
 
           {/* Alternative text */}
