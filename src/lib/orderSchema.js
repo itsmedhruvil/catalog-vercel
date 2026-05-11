@@ -331,13 +331,14 @@ export async function createOrder(data) {
     }
   });
   
-  // If order is created with 'confirmed' status, reduce stock immediately
-  if (order.orderStatus === 'confirmed' && order.items) {
+  // Stock is NOT deducted on creation - it will be deducted when order is marked as delivered
+  // This ensures product quantity reflects actual inventory until delivery completes
+  if (order.orderStatus === 'delivered' && order.items) {
     for (const item of order.items) {
       await updateProductStock(
         item.productId,
         -item.quantity,
-        `Order ${order.orderNumber} confirmed`
+        `Order ${order.orderNumber} delivered - stock deducted`
       );
     }
   }
@@ -531,11 +532,11 @@ export async function updateOrderById(id, updates) {
       updateOps.$set.items = cleanItems;
     }
     
-    // Track status changes for stock management
+        // Track status changes for stock management
     const oldStatus = currentOrder.orderStatus;
     const newStatus = updates.orderStatus || oldStatus;
-    const isStatusChangingToConfirmed = newStatus === 'confirmed' && oldStatus !== 'confirmed';
-    const isStatusChangingFromConfirmed = oldStatus === 'confirmed' && newStatus !== 'confirmed';
+    const isStatusDelivering = newStatus === 'delivered' && oldStatus !== 'delivered';
+    const isStatusChangingFromDelivered = oldStatus === 'delivered' && newStatus !== 'delivered';
     const isStatusCancelling = newStatus === 'cancelled' && oldStatus !== 'cancelled';
     const isStatusRefunding = newStatus === 'refunded' && oldStatus !== 'refunded';
     // Check if order was previously cancelled/refunded and now being changed to something else
@@ -576,26 +577,25 @@ export async function updateOrderById(id, updates) {
     if (!order) return null;
     
     // Stock management based on status changes
-    // Note: Stock is now reduced immediately when order is created (in orders API)
-    // So we only need to restore stock when order is cancelled/refunded, not reduce it again on confirm
+    // Stock is deducted when order is marked as delivered, not on creation/confirmed
     if (order.items && order.items.length > 0) {
-      // If order status changes to cancelled or refunded, restore stock
-      if (isStatusCancelling || isStatusRefunding) {
+      // If order is being marked as delivered, deduct stock
+      if (isStatusDelivering) {
         for (const item of order.items) {
           await updateProductStock(
             item.productId,
-            item.quantity,
-            `Order ${order.orderNumber} ${isStatusCancelling ? 'cancelled' : 'refunded'} - stock replenished`
+            -item.quantity,
+            `Order ${order.orderNumber} delivered - stock deducted`
           );
         }
         
         activities.push({
-          type: 'stock_restored',
-          reason: isStatusCancelling ? 'cancelled' : 'refunded',
+          type: 'stock_deducted',
+          reason: 'delivered',
           items: order.items.map(item => ({
             productId: item.productId,
             productName: item.productName,
-            quantityRestored: item.quantity
+            quantityReduced: item.quantity
           })),
           orderId: order._id,
           orderNumber: order.orderNumber,
@@ -603,26 +603,25 @@ export async function updateOrderById(id, updates) {
         });
       }
       
-      // If order was previously cancelled/refunded and is now being changed to an active status,
-      // reduce stock again
-      if (isStatusChangingFromCancelled || isStatusChangingFromRefunded) {
-        // Only reduce stock if the new status is an active status (not cancelled/refunded)
-        if (newStatus !== 'cancelled' && newStatus !== 'refunded') {
+      // If order was previously delivered and status changes away from delivered, restore stock
+      if (isStatusChangingFromDelivered) {
+        // Only restore if new status is cancelled/refunded (not going back to shipped/processing)
+        if (newStatus === 'cancelled' || newStatus === 'refunded') {
           for (const item of order.items) {
             await updateProductStock(
               item.productId,
-              -item.quantity,
-              `Order ${order.orderNumber} status changed from ${oldStatus} to ${newStatus}`
+              item.quantity,
+              `Order ${order.orderNumber} status changed from delivered to ${newStatus} - stock replenished`
             );
           }
           
           activities.push({
-            type: 'stock_reduced',
-            reason: `status changed from ${oldStatus} to ${newStatus}`,
+            type: 'stock_restored',
+            reason: `status changed from delivered to ${newStatus}`,
             items: order.items.map(item => ({
               productId: item.productId,
               productName: item.productName,
-              quantityReduced: item.quantity
+              quantityRestored: item.quantity
             })),
             orderId: order._id,
             orderNumber: order.orderNumber,
@@ -630,6 +629,9 @@ export async function updateOrderById(id, updates) {
           });
         }
       }
+      
+      // If order status changes to cancelled or refunded (from non-delivered status), no stock action needed
+      // since stock was never deducted for non-delivered orders
     }
     
     // Log activities to console (in production, this could go to a dedicated activity log collection)
@@ -652,8 +654,8 @@ export async function deleteOrderById(id) {
     
     if (!order) return false;
     
-    // Restore stock for all items if the order was confirmed (stock was reduced)
-    if (order.orderStatus === 'confirmed' && order.items && order.items.length > 0) {
+    // Restore stock for all items if the order was delivered (stock was reduced on delivery)
+    if (order.orderStatus === 'delivered' && order.items && order.items.length > 0) {
       for (const item of order.items) {
         await updateProductStock(
           item.productId,

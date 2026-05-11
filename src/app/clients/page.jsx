@@ -16,12 +16,12 @@ import {
   Building,
   Star,
   ShoppingBag,
-  ArrowLeft,
   Filter,
   Download,
   Eye,
   UserPlus
 } from 'lucide-react'
+import AdminSidebar from '@/components/admin/AdminSidebar'
 import useAdminAuth from '@/hooks/useAdminAuth'
 
 export default function ClientsPage() {
@@ -46,10 +46,8 @@ export default function ClientsPage() {
   useEffect(() => {
     if (isSignedIn !== undefined) {
       if (isSignedIn && !isAdmin) {
-        // User is signed in but not an admin - redirect to catalog
         router.push('/catalog')
       } else if (!isSignedIn) {
-        // User is not signed in - redirect to sign in
         router.push('/sign-in')
       }
     }
@@ -147,264 +145,261 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/catalog')}
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft size={24} />
-              </button>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Admin Sidebar */}
+      <AdminSidebar />
+
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="px-6">
+            <div className="flex items-center justify-between h-16">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Client Database</h1>
                 <p className="text-sm text-gray-500">Manage your customer relationships</p>
               </div>
-            </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-            >
-              <UserPlus size={18} />
-              Add Client
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users size={20} className="text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Clients</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalCustomers}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Star size={20} className="text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Active Clients</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.activeCustomers}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <ShoppingBag size={20} className="text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Top Spenders</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.topCustomers?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Building size={20} className="text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Corporate</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.customerTypes?.find(t => t._id === 'corporate')?.count || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search by name, email, or phone..."
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => handleSearch('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
               >
-                <option value="all">All Types</option>
-                <option value="retail">Retail</option>
-                <option value="wholesale">Wholesale</option>
-                <option value="vip">VIP</option>
-                <option value="corporate">Corporate</option>
-              </select>
+                <UserPlus size={18} />
+                Add Client
+              </button>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Customers Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Client</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Contact</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Type</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Orders</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Total Spent</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Last Order</th>
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {loading ? (
+        {/* Main Content */}
+        <div className="flex-1 px-6 py-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users size={20} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Clients</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalCustomers}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Star size={20} className="text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Active Clients</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.activeCustomers}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <ShoppingBag size={20} className="text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Top Spenders</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.topCustomers?.length || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Building size={20} className="text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Corporate</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.customerTypes?.find(t => t._id === 'corporate')?.count || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search and Filter */}
+          <div className="bg-white rounded-xl p-4 border border-gray-200 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or phone..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => handleSearch('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Types</option>
+                  <option value="retail">Retail</option>
+                  <option value="wholesale">Wholesale</option>
+                  <option value="vip">VIP</option>
+                  <option value="corporate">Corporate</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Customers Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-gray-500">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                        Loading customers...
-                      </div>
-                    </td>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Client</th>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Contact</th>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Type</th>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Orders</th>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Total Spent</th>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Last Order</th>
+                    <th className="text-left py-4 px-4 text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
-                ) : filteredCustomers.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="py-8 text-center text-gray-500">
-                      No customers found. Add your first client to get started.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCustomers.map(customer => (
-                    <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold">
-                              {customer.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{customer.name}</p>
-                            {customer.companyName && (
-                              <p className="text-sm text-gray-500">{customer.companyName}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Mail size={14} />
-                            {customer.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Phone size={14} />
-                            {customer.phone}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          customer.customerType === 'vip' ? 'bg-purple-100 text-purple-700' :
-                          customer.customerType === 'corporate' ? 'bg-amber-100 text-amber-700' :
-                          customer.customerType === 'wholesale' ? 'bg-blue-100 text-blue-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {customer.customerType}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-900">
-                        {customer.totalOrders || 0}
-                      </td>
-                      <td className="py-4 px-4 text-sm font-semibold text-gray-900">
-                        {formatCurrency(customer.totalSpent || 0)}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-600">
-                        {formatDate(customer.lastOrderDate)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setSelectedCustomer(customer)
-                              setShowEditModal(true)
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit Customer"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              // Navigate to create order with this customer pre-filled
-                              localStorage.setItem('prefillCustomer', JSON.stringify(customer))
-                              router.push('/orders/create')
-                            }}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Create Order"
-                          >
-                            <Plus size={16} />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (confirm('Are you sure you want to delete this customer?')) {
-                                try {
-                                  const res = await fetch(`/api/customers/${customer.id}`, {
-                                    method: 'DELETE'
-                                  })
-                                  if (res.ok) {
-                                    loadCustomers()
-                                    loadStats()
-                                    showToast('Customer deleted successfully')
-                                  }
-                                } catch (error) {
-                                  console.error('Error deleting customer:', error)
-                                }
-                              }
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Customer"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-gray-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                          Loading customers...
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-gray-500">
+                        No customers found. Add your first client to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCustomers.map(customer => (
+                      <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold">
+                                {customer.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{customer.name}</p>
+                              {customer.companyName && (
+                                <p className="text-sm text-gray-500">{customer.companyName}</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Mail size={14} />
+                              {customer.email}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Phone size={14} />
+                              {customer.phone}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            customer.customerType === 'vip' ? 'bg-purple-100 text-purple-700' :
+                            customer.customerType === 'corporate' ? 'bg-amber-100 text-amber-700' :
+                            customer.customerType === 'wholesale' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {customer.customerType}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900">
+                          {customer.totalOrders || 0}
+                        </td>
+                        <td className="py-4 px-4 text-sm font-semibold text-gray-900">
+                          {formatCurrency(customer.totalSpent || 0)}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-600">
+                          {formatDate(customer.lastOrderDate)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedCustomer(customer)
+                                setShowEditModal(true)
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit Customer"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Navigate to create order with this customer pre-filled
+                                localStorage.setItem('prefillCustomer', JSON.stringify(customer))
+                                router.push('/orders/create')
+                              }}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Create Order"
+                            >
+                              <Plus size={16} />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (confirm('Are you sure you want to delete this customer?')) {
+                                  try {
+                                    const res = await fetch(`/api/customers/${customer.id}`, {
+                                      method: 'DELETE'
+                                    })
+                                    if (res.ok) {
+                                      loadCustomers()
+                                      loadStats()
+                                      showToast('Customer deleted successfully')
+                                    }
+                                  } catch (error) {
+                                    console.error('Error deleting customer:', error)
+                                  }
+                                }
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Customer"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Add Customer Modal */}
       {showAddModal && (

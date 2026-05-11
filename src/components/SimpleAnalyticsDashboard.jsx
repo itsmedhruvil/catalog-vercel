@@ -19,7 +19,7 @@ import {
   Star
 } from 'lucide-react';
 
-export default function SimpleAnalyticsDashboard({ products = [], setProducts, showToast }) {
+export default function SimpleAnalyticsDashboard({ products = [], orders = [], setProducts, showToast }) {
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
@@ -68,6 +68,19 @@ export default function SimpleAnalyticsDashboard({ products = [], setProducts, s
     // Count products with images
     const productsWithImages = products.filter(p => p.images && p.images.length > 0).length;
 
+    // Order analytics
+    const totalOrders = orders.length;
+    const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const pendingOrders = orders.filter(o => (o.orderStatus || o.status) === 'pending').length;
+    const confirmedOrders = orders.filter(o => (o.orderStatus || o.status) === 'confirmed').length;
+    const processingOrders = orders.filter(o => (o.orderStatus || o.status) === 'processing').length;
+    const shippedOrders = orders.filter(o => (o.orderStatus || o.status) === 'shipped').length;
+    const deliveredOrders = orders.filter(o => (o.orderStatus || o.status) === 'delivered').length;
+    const cancelledOrders = orders.filter(o => (o.orderStatus || o.status) === 'cancelled').length;
+
+    // Average order value
+    const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
     return {
       totalProducts,
       totalStock: totalStockValue,
@@ -78,9 +91,19 @@ export default function SimpleAnalyticsDashboard({ products = [], setProducts, s
       categories,
       categoryDistribution,
       productsWithDelivery,
-      productsWithImages
+      productsWithImages,
+      // Order metrics
+      totalOrders,
+      totalRevenue,
+      avgOrderValue,
+      pendingOrders,
+      confirmedOrders,
+      processingOrders,
+      shippedOrders,
+      deliveredOrders,
+      cancelledOrders
     };
-  }, [products]);
+  }, [products, orders]);
 
   // Filtered products for detailed view
   const filteredProducts = useMemo(() => {

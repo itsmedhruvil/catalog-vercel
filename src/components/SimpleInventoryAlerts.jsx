@@ -17,7 +17,7 @@ import {
   X
 } from 'lucide-react';
 
-export default function SimpleInventoryAlerts({ products = [], setProducts, showToast }) {
+export default function SimpleInventoryAlerts({ products = [], orders = [], setProducts, showToast }) {
   const [showFilters, setShowFilters] = useState(false);
   const [alertType, setAlertType] = useState('all');
   const [severity, setSeverity] = useState('all');
@@ -26,18 +26,45 @@ export default function SimpleInventoryAlerts({ products = [], setProducts, show
   const alerts = useMemo(() => {
     const detectedAlerts = [];
     
+    // Calculate committed stock from orders (confirmed/processing/shipped)
+    const committedStock = {};
+    (orders || []).forEach(order => {
+      const status = order.orderStatus || order.status;
+      if (['confirmed', 'processing', 'shipped'].includes(status)) {
+        (order.items || []).forEach(item => {
+          const pid = typeof item.productId === 'string' ? item.productId : item.productId?._id || item.productId?.id;
+          if (pid) {
+            committedStock[pid] = (committedStock[pid] || 0) + (item.quantity || 0);
+          }
+        });
+      }
+    });
+    
     products.forEach(product => {
       // totalQuantity is the single source of truth for stock
       const stock = parseInt(product.totalQuantity) || 0;
+      const committed = product.committedStock || committedStock[product.id] || 0;
+      const realAvailable = product.realAvailable !== undefined ? product.realAvailable : Math.max(0, stock - committed);
 
-      // Low Stock Alert
-      if (stock <= 5 && stock > 0) {
+      // Low Stock Alert (based on real available stock after committed orders)
+      if (realAvailable <= 5 && realAvailable > 0) {
         detectedAlerts.push({
           id: `${product.id}-low-stock`,
           type: 'low-stock',
           severity: 'warning',
           title: 'Low Stock Alert',
-          message: `${product.name} has only ${stock} units in stock`,
+          message: `${product.name} has only ${realAvailable} units available (${stock} total, ${committed} committed to orders)`,
+          product: product.name,
+          category: product.category,
+          timestamp: new Date().toISOString()
+        });
+      } else if (realAvailable === 0 && stock > 0) {
+        detectedAlerts.push({
+          id: `${product.id}-committed-fully`,
+          type: 'out-of-stock',
+          severity: 'critical',
+          title: 'All Stock Committed to Orders',
+          message: `${product.name} has ${stock} units but all are committed to active orders`,
           product: product.name,
           category: product.category,
           timestamp: new Date().toISOString()
@@ -49,6 +76,18 @@ export default function SimpleInventoryAlerts({ products = [], setProducts, show
           severity: 'critical',
           title: 'Out of Stock Alert',
           message: `${product.name} is completely out of stock`,
+          product: product.name,
+          category: product.category,
+          timestamp: new Date().toISOString()
+        });
+      } else if (committed > 0) {
+        // Show info alert when some stock is committed
+        detectedAlerts.push({
+          id: `${product.id}-committed`,
+          type: 'committed-stock',
+          severity: 'info',
+          title: 'Stock Committed to Orders',
+          message: `${product.name}: ${committed} of ${stock} units committed to active orders, ${realAvailable} available`,
           product: product.name,
           category: product.category,
           timestamp: new Date().toISOString()
@@ -187,6 +226,7 @@ export default function SimpleInventoryAlerts({ products = [], setProducts, show
       info: alerts.filter(a => a.severity === 'info').length,
       lowStock: alerts.filter(a => a.type === 'low-stock').length,
       outOfStock: alerts.filter(a => a.type === 'out-of-stock').length,
+      committed: alerts.filter(a => a.type === 'committed-stock').length,
       noDelivery: alerts.filter(a => a.type === 'no-delivery').length,
       noImages: alerts.filter(a => a.type === 'no-images').length
     };
