@@ -62,10 +62,7 @@ export default function DeliveryPage() {
   const updateDeliveryStatus = async (orderId, newStatus) => {
     try {
       const updatedOrder = await updateOrder(orderId, {
-        orderStatus: newStatus,
-        delivery: {
-          ...orders.find(o => o.id === orderId || o._id === orderId)?.delivery,
-        }
+        orderStatus: newStatus
       });
       setOrders(prev => prev.map(o => 
         (o.id === orderId || o._id === orderId) ? updatedOrder : o
@@ -77,9 +74,11 @@ export default function DeliveryPage() {
     }
   };
 
-  // Filter and search orders
+  // Filter and search orders - exclude pending (payment pending) and confirmed (confirmation pending) orders
   const filteredOrders = orders.filter(order => {
     const status = order.orderStatus || order.status || 'pending';
+    // Skip orders that are still in payment/confirmation pending phase
+    if (status === 'pending' || status === 'confirmed') return false;
     const matchesStatus = statusFilter === 'all' || status === statusFilter;
     
     const query = searchQuery.toLowerCase();
@@ -95,13 +94,17 @@ export default function DeliveryPage() {
     return (statusOrder[aStatus] || 0) - (statusOrder[bStatus] || 0);
   });
 
-  // Delivery stats
+  // Delivery stats - only count orders in delivery-relevant statuses
   const deliveryStats = {
     pending: orders.filter(o => (o.orderStatus || o.status) === 'pending').length,
+    confirmed: orders.filter(o => (o.orderStatus || o.status) === 'confirmed').length,
     processing: orders.filter(o => (o.orderStatus || o.status) === 'processing').length,
     shipped: orders.filter(o => (o.orderStatus || o.status) === 'shipped').length,
     delivered: orders.filter(o => (o.orderStatus || o.status) === 'delivered').length,
-    total: orders.length,
+    total: orders.filter(o => {
+      const status = o.orderStatus || o.status || 'pending';
+      return !['pending', 'confirmed'].includes(status);
+    }).length,
   };
 
   // Show loading state while checking auth
@@ -243,7 +246,7 @@ export default function DeliveryPage() {
                 />
               </div>
               <div className="flex gap-2 flex-wrap">
-                {['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => (
+                {['all', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}

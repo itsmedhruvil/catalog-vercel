@@ -45,6 +45,7 @@ import {
 } from "@/lib/api";
 import { isAdminMode, toggleAdminMode } from "@/lib/admin";
 import useAdminAuth from "@/hooks/useAdminAuth";
+import AdminSidebar from "./admin/AdminSidebar";
 import ProductFormModal from "./ProductFormModal";
 import ProductFormModalEnhanced from "./ProductFormModalEnhanced";
 import ShareOptionsModal from "./ShareOptionsModal";
@@ -330,195 +331,199 @@ export default function CatalogClient({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-inter text-gray-900 pb-20">
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Admin Sidebar - only visible for admin users */}
+      {isLoaded && isAdmin && <AdminSidebar />}
 
-      {/* SEARCH BAR - Fixed width to match header */}
-      <div className="max-w-7xl mx-auto">
-        <div className="px-4 py-3">
-          <div className="relative">
-            <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Search products by name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-100 text-sm text-gray-900 rounded-xl pl-10 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            )}
+      {/* Main Content */}
+      <div className="flex-1 min-h-screen font-inter text-gray-900">
+        <style>{`
+          .no-scrollbar::-webkit-scrollbar { display: none; }
+          .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
+
+        {/* SEARCH BAR */}
+        <div className={isAdmin ? "max-w-7xl mx-auto" : "max-w-7xl mx-auto"}>
+          <div className="px-4 py-3">
+            <div className="relative">
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="text"
+                placeholder="Search products by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-100 text-sm text-gray-900 rounded-xl pl-10 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* FILTER TABS */}
+          {sharedIds.length === 0 && (
+            <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
+              {["all", ...categories].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${
+                    filter === f
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+
+              {isLoaded && isAdmin && (
+                <button
+                  onClick={() => setActiveModal("categories")}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
+                >
+                  <Settings size={14} /> Manage
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* FILTER TABS */}
-        {sharedIds.length === 0 && (
-          <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center">
-            {["all", ...categories].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${
-                  filter === f
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+        {/* PRODUCT GRID */}
+        <main className="max-w-7xl mx-auto p-4">
+          {displayedProducts.length === 0 ? (
+            <div className="text-center py-20 text-gray-500">
+              {searchQuery ? (
+                <>
+                  <Search className="mx-auto mb-4 opacity-20" size={64} />
+                  <p>No products match "{searchQuery}"</p>
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="mt-4 text-blue-600 font-medium"
+                  >
+                    Clear Search
+                  </button>
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="mx-auto mb-4 opacity-20" size={64} />
+                  <p>No products found in this category.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {displayedProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedProductIds.has(product.id)}
+                  isAdmin={isAdmin}
+                  showStock={showStock}
+                  hidePrice={effectiveHidePrice}
+                  onSelect={() => toggleSelection(product.id)}
+                  onImageClick={() => {
+                    if (isSelectionMode) {
+                      toggleSelection(product.id);
+                    } else {
+                      router.push(`/product/${product.id}`);
+                    }
+                  }}
+                  onEdit={() => {
+                    setCurrentProduct(product);
+                    setActiveModal("edit");
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </main>
 
-            {/* Always render the button but hide it until admin status is confirmed to avoid hydration mismatch */}
-            {isLoaded && isAdmin && (
-              <button
-                onClick={() => setActiveModal("categories")}
-                className="px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap bg-blue-50 text-blue-600 flex items-center gap-1 ml-2"
-              >
-                <Settings size={14} /> Manage
-              </button>
-            )}
+        {/* FLOATING ACTION BUTTON */}
+        {isLoaded && isAdmin && sharedIds.length === 0 && !isSelectionMode && (
+          <button
+            onClick={() => {
+              setCurrentProduct(null);
+              setActiveModal("add");
+            }}
+            className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 transition-transform active:scale-95 z-20"
+          >
+            <Plus size={28} />
+          </button>
+        )}
+
+        {/* TOTAL VALUE BANNER */}
+        {showTotal && sharedIds.length > 0 && !effectiveHidePrice && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20 flex justify-between items-center animate-slide-up">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Estimated Total
+              </span>
+              <span className="text-sm text-gray-500 font-medium">
+                {displayedProducts.length} items
+              </span>
+            </div>
+            <span className="text-2xl font-bold text-blue-600">
+              {formattedTotal}
+            </span>
+          </div>
+        )}
+
+        {/* MODALS */}
+        {activeModal === "categories" && isAdmin && (
+          <ManageCategoriesModal
+            categories={categories}
+            setCategories={setCategories}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+
+        {activeModal === "shareOptions" && (
+          <ShareOptionsModal
+            categories={categories}
+            onClose={() => setActiveModal(null)}
+            onCopyCategory={copyCategoryLink}
+            onCustomSelect={() => {
+              setActiveModal(null);
+              setIsSelectionMode(true);
+            }}
+          />
+        )}
+
+        {activeModal === "shareConfig" && (
+          <ShareConfigModal
+            selectedCount={selectedProductIds.size}
+            onClose={() => setActiveModal(null)}
+            onGenerate={handleGenerateShareLink}
+          />
+        )}
+
+        {(activeModal === "add" || activeModal === "edit") && isAdmin && (
+          <ProductFormModal
+            product={currentProduct}
+            categories={categories}
+            onClose={() => setActiveModal(null)}
+            onSave={handleSaveProduct}
+            onDelete={() => handleDeleteProduct(currentProduct.id)}
+          />
+        )}
+
+        {/* TOAST NOTIFICATION */}
+        {toastMessage && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm font-medium animate-fade-in-up whitespace-nowrap">
+            {toastMessage}
           </div>
         )}
       </div>
-
-      {/* PRODUCT GRID - Fixed width to match header */}
-      <main className="max-w-7xl mx-auto p-4">
-        {displayedProducts.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            {searchQuery ? (
-              <>
-                <Search className="mx-auto mb-4 opacity-20" size={64} />
-                <p>No products match "{searchQuery}"</p>
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="mt-4 text-blue-600 font-medium"
-                >
-                  Clear Search
-                </button>
-              </>
-            ) : (
-              <>
-                <ImageIcon className="mx-auto mb-4 opacity-20" size={64} />
-                <p>No products found in this category.</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {displayedProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedProductIds.has(product.id)}
-                isAdmin={isAdmin}
-                showStock={showStock}
-                hidePrice={effectiveHidePrice}
-                onSelect={() => toggleSelection(product.id)}
-                onImageClick={() => {
-                  if (isSelectionMode) {
-                    toggleSelection(product.id);
-                  } else {
-                    // Navigate to product page using Next.js router for proper history
-                    router.push(`/product/${product.id}`);
-                  }
-                }}
-                onEdit={() => {
-                  setCurrentProduct(product);
-                  setActiveModal("edit");
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* FLOATING ACTION BUTTON - Only show after auth is loaded to avoid hydration mismatch */}
-      {isLoaded && isAdmin && sharedIds.length === 0 && !isSelectionMode && (
-        <button
-          onClick={() => {
-            setCurrentProduct(null);
-            setActiveModal("add");
-          }}
-          className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 transition-transform active:scale-95 z-20"
-        >
-          <Plus size={28} />
-        </button>
-      )}
-
-      {/* TOTAL VALUE BANNER (Viewer Mode) */}
-      {showTotal && sharedIds.length > 0 && !effectiveHidePrice && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-20 flex justify-between items-center animate-slide-up">
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              Estimated Total
-            </span>
-            <span className="text-sm text-gray-500 font-medium">
-              {displayedProducts.length} items
-            </span>
-          </div>
-          <span className="text-2xl font-bold text-blue-600">
-            {formattedTotal}
-          </span>
-        </div>
-      )}
-
-      {/* MODALS */}
-      {activeModal === "categories" && isAdmin && (
-        <ManageCategoriesModal
-          categories={categories}
-          setCategories={setCategories}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
-
-      {activeModal === "shareOptions" && (
-        <ShareOptionsModal
-          categories={categories}
-          onClose={() => setActiveModal(null)}
-          onCopyCategory={copyCategoryLink}
-          onCustomSelect={() => {
-            setActiveModal(null);
-            setIsSelectionMode(true);
-          }}
-        />
-      )}
-
-      {activeModal === "shareConfig" && (
-        <ShareConfigModal
-          selectedCount={selectedProductIds.size}
-          onClose={() => setActiveModal(null)}
-          onGenerate={handleGenerateShareLink}
-        />
-      )}
-
-      {(activeModal === "add" || activeModal === "edit") && isAdmin && (
-        <ProductFormModal
-          product={currentProduct}
-          categories={categories}
-          onClose={() => setActiveModal(null)}
-          onSave={handleSaveProduct}
-          onDelete={() => handleDeleteProduct(currentProduct.id)}
-        />
-      )}
-
-      {/* TOAST NOTIFICATION */}
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl z-50 text-sm font-medium animate-fade-in-up whitespace-nowrap">
-          {toastMessage}
-        </div>
-      )}
     </div>
   );
 }

@@ -88,6 +88,11 @@ export default function GlobalHeader() {
     return null
   }
 
+  // Hide top header on admin pages where AdminSidebar is shown instead
+  if (isMounted && displayIsAdmin && pathname === '/catalog') {
+    return null
+  }
+
   return (
     <>
       {/* Global Header */}

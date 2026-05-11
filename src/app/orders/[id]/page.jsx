@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Edit2, Trash2, Download, Printer, Mail, Phone, MapPin, Calendar, Clock, Truck, CreditCard, Users, Eye, EyeOff, Plus, Save, X } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, Download, Printer, Mail, Phone, MapPin, Calendar, Clock, Truck, CreditCard, Users, Eye, EyeOff, Plus, Save, X, CheckCircle } from "lucide-react";
 import useAdminAuth from "@/hooks/useAdminAuth";
 import { fetchOrderById, updateOrder } from "@/lib/api";
 
@@ -192,6 +192,36 @@ export default function OrderDetailsPage() {
     }));
   };
 
+  const handleMarkConfirmed = async () => {
+    try {
+      const updatedOrder = await updateOrder(orderId, {
+        orderStatus: 'confirmed'
+      });
+      setOrder(updatedOrder);
+      setEditData(updatedOrder);
+    } catch (error) {
+      console.error('Error confirming order:', error);
+    }
+  };
+
+  const handleMarkPaymentDone = async () => {
+    try {
+      const updatedOrder = await updateOrder(orderId, {
+        payment: {
+          method: order.payment?.method || 'cod',
+          status: 'paid',
+          transactionId: order.payment?.transactionId || '',
+          paymentReference: order.payment?.paymentReference || '',
+          paymentDate: order.payment?.paymentDate || new Date().toISOString()
+        }
+      });
+      setOrder(updatedOrder);
+      setEditData(updatedOrder);
+    } catch (error) {
+      console.error('Error marking payment:', error);
+    }
+  };
+
   // Order Actions Handlers
   const handlePrintInvoice = () => {
     // Open receipt page in new window for printing
@@ -330,13 +360,33 @@ export default function OrderDetailsPage() {
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={handleEditToggle}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    >
-                      <Edit2 size={18} />
-                      Edit Order
-                    </button>
+                    <>
+                      {order.orderStatus === 'pending' && (
+                        <button
+                          onClick={handleMarkConfirmed}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                        >
+                          <CheckCircle size={18} />
+                          Confirm Order
+                        </button>
+                      )}
+                      {(order.orderStatus === 'pending' || (order.orderStatus === 'confirmed' && order.payment?.status === 'pending')) && (
+                        <button
+                          onClick={handleMarkPaymentDone}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        >
+                          <CreditCard size={18} />
+                          Mark Paid
+                        </button>
+                      )}
+                      <button
+                        onClick={handleEditToggle}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      >
+                        <Edit2 size={18} />
+                        Edit Order
+                      </button>
+                    </>
                   )}
                 </>
               )}
@@ -825,13 +875,6 @@ export default function OrderDetailsPage() {
               >
                 <Printer size={18} />
                 Print Invoice
-              </button>
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download size={18} />
-                Export PDF
               </button>
               <button
                 onClick={handleSendEmail}
