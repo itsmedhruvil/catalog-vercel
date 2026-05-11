@@ -1,17 +1,19 @@
 /// <reference types="node" />
 import {
-  clerkClient,
   clerkMiddleware,
   createRouteMatcher,
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { getAdminEmails } from '@/lib/admin';
+import { checkIsAdmin } from '@/lib/admin';
 
 type SessionClaimsLike = {
   email?: string;
   email_address?: string;
   primary_email_address?: string;
   primaryEmailAddress?: string;
+  metadata?: {
+    role?: string;
+  };
 };
 
 const getUserEmailFromSessionClaims = (
@@ -28,22 +30,6 @@ const getUserEmailFromSessionClaims = (
   }
 
   return rawEmail.trim().toLowerCase();
-};
-
-const getUserEmailFromClerk = async (
-  userId: string | null | undefined,
-): Promise<string | undefined> => {
-  if (!userId) {
-    return undefined;
-  }
-
-  const client = await clerkClient();
-  const user = await client.users.getUser(userId);
-  const rawEmail =
-    user.primaryEmailAddress?.emailAddress ??
-    user.emailAddresses?.[0]?.emailAddress;
-
-  return rawEmail?.trim().toLowerCase();
 };
 
 // Define public routes that don't require authentication
@@ -73,20 +59,23 @@ export default clerkMiddleware(async (auth, req) => {
   const isCheckoutRoute = pathname === "/checkout";
   const isOrderReceiptRoute = /^\/orders\/[^\/]+\/receipt$/.test(pathname);
 
-  // Get user's email from session claims. Clerk does not always include email
-  // claims in the middleware token, so fetch the user record when needed.
-  const userEmail =
-    getUserEmailFromSessionClaims(
-      sessionClaims as SessionClaimsLike | undefined,
-    ) ?? (await getUserEmailFromClerk(userId));
+  // Get user's email from session claims (for fallback check)
+  const userEmail = getUserEmailFromSessionClaims(
+    sessionClaims as SessionClaimsLike | undefined,
+  );
 
-  const adminEmails = getAdminEmails();
-  const isAdmin = 
-    process.env.NODE_ENV === "development" || 
-    (!!userEmail && adminEmails.includes(userEmail));
+  // Get admin role from Clerk public metadata (set via Clerk Dashboard)
+  // Go to Clerk Dashboard → Users → Select user → Public metadata → {"role": "admin"}
+  const userRole = (sessionClaims as SessionClaimsLike | undefined)?.metadata?.role;
+
+  // Primary: check Clerk public metadata role
+  // Fallback: check email (backwards compatibility)
+  const isAdmin =
+    process.env.NODE_ENV === "development" ||
+    checkIsAdmin({ role: userRole, email: userEmail });
 
   // Debugging: Uncomment the line below to see why access is being denied in your server logs
-  // console.log(`[Middleware] Path: ${req.nextUrl.pathname}, Email: ${userEmail}, isAdmin: ${isAdmin}`);
+  // console.log(`[Middleware] Path: ${req.nextUrl.pathname}, Email: ${userEmail}, Role: ${userRole}, isAdmin: ${isAdmin}`);
 
   // For customer routes, allow access to authenticated users
   if (isMyOrdersRoute || isCheckoutRoute || isOrderReceiptRoute) {

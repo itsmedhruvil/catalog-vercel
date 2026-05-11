@@ -1,8 +1,12 @@
 // Admin state management with Clerk
-// This file provides helper functions for admin mode detection
-// Admin mode is determined by Clerk authentication AND admin email check
+// Admin mode is determined by Clerk authentication AND admin role metadata (or fallback email check)
+//
+// To grant admin access:
+//   1. Go to https://dashboard.clerk.com → Users → Select a user
+//   2. Under "Public metadata", add: {"role": "admin"}
+//   3. Save — changes take effect immediately on next request
 
-// The admin email - only this email gets admin access
+// The admin email fallback — only this email gets admin access if no role metadata is set
 const ADMIN_EMAIL = 'corp.weexalate@gmail.com';
 
 // Get list of admin emails from environment variable or use default
@@ -14,20 +18,36 @@ export const getAdminEmails = () => {
     .filter(email => email.length > 0);
 };
 
-// Check if a specific email has admin access
-// Only corp.weexalate@gmail.com (or emails in NEXT_PUBLIC_ADMIN_EMAILS) gets admin access
+// Check if a specific email has admin access (fallback method)
 export const isAdminEmail = (email) => {
   if (!email) return false;
   const adminEmails = getAdminEmails();
-  // Only allow specific admin emails, or any if in development
   return adminEmails.includes(email.toLowerCase()) || process.env.NODE_ENV === 'development';
+};
+
+// Check if the given role metadata indicates admin access (primary method)
+export const isAdminRole = (role) => {
+  return role === 'admin';
+};
+
+// Combined admin check: primary is role metadata, fallback is email
+// This can be used on the server (middleware) with sessionClaims metadata
+export const checkIsAdmin = ({ role, email } = {}) => {
+  // Primary: check role metadata from Clerk
+  if (role && role === 'admin') return true;
+
+  // Fallback: check email (backwards compatibility)
+  if (email && isAdminEmail(email)) return true;
+
+  // Always allow in development
+  if (process.env.NODE_ENV === 'development') return true;
+
+  return false;
 };
 
 // Check if user is in admin mode (client-side)
 export const isAdminMode = () => {
   if (typeof window !== 'undefined') {
-    // Check if admin mode is enabled in localStorage
-    // This is set by enableAdminMode() when a user with admin email signs in
     return localStorage.getItem('admin_mode_enabled') === 'true';
   }
   return false;
