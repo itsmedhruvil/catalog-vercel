@@ -88,10 +88,9 @@ export default function GlobalHeader() {
     return null
   }
 
-  // Hide top header on admin pages where AdminSidebar is shown instead
-  if (isMounted && displayIsAdmin && pathname === '/catalog') {
-    return null
-  }
+  // Keep the top bar visible on admin pages, but hide the menu button and off-canvas menu
+  // since the AdminSidebar provides the navigation instead
+  const isAdminPage = displayIsAdmin && ['/admin', '/orders', '/alerts', '/clients', '/analytics', '/delivery', '/catalog'].some(path => pathname?.startsWith(path))
 
   return (
     <>
@@ -226,21 +225,23 @@ export default function GlobalHeader() {
                 </button>
               )}
 
-              {/* Menu Button */}
-              <button
-                onClick={() => setIsMenuOpen(true)}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                title="Menu"
-              >
-                <Menu size={20} />
-              </button>
+              {/* Menu Button - hidden on admin pages since sidebar provides navigation */}
+              {!isAdminPage && (
+                <button
+                  onClick={() => setIsMenuOpen(true)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  title="Menu"
+                >
+                  <Menu size={20} />
+                </button>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Off-Canvas Menu */}
-      {isMenuOpen && (
+      {/* Off-Canvas Menu - hidden on admin pages since sidebar provides navigation */}
+      {!isAdminPage && isMenuOpen && (
         <>
           {/* Overlay */}
           <div 
