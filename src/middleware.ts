@@ -2,35 +2,10 @@
 import {
   clerkMiddleware,
   createRouteMatcher,
+  clerkClient,
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { checkIsAdmin } from '@/lib/admin';
-
-type SessionClaimsLike = {
-  email?: string;
-  email_address?: string;
-  primary_email_address?: string;
-  primaryEmailAddress?: string;
-  metadata?: {
-    role?: string;
-  };
-};
-
-const getUserEmailFromSessionClaims = (
-  sessionClaims: SessionClaimsLike | null | undefined,
-): string | undefined => {
-  const rawEmail =
-    sessionClaims?.email ??
-    sessionClaims?.email_address ??
-    sessionClaims?.primary_email_address ??
-    sessionClaims?.primaryEmailAddress;
-
-  if (!rawEmail || typeof rawEmail !== "string") {
-    return undefined;
-  }
-
-  return rawEmail.trim().toLowerCase();
-};
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
@@ -52,21 +27,43 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   // Get user authentication status
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
 
   const pathname = req.nextUrl.pathname;
   const isMyOrdersRoute = pathname === "/my-orders";
   const isCheckoutRoute = pathname === "/checkout";
   const isOrderReceiptRoute = /^\/orders\/[^\/]+\/receipt$/.test(pathname);
 
-  // Get user's email from session claims (for fallback check)
-  const userEmail = getUserEmailFromSessionClaims(
-    sessionClaims as SessionClaimsLike | undefined,
-  );
+  // Initialize role and email - fetched from Clerk API when authenticated.
+  let userRole: string | undefined;
+  let userEmail: string | undefined;
 
-  // Get admin role from Clerk public metadata (set via Clerk Dashboard)
-  // Go to Clerk Dashboard → Users → Select user → Public metadata → {"role": "admin"}
-  const userRole = (sessionClaims as SessionClaimsLike | undefined)?.metadata?.role;
+  // If user is authenticated, fetch their public metadata from Clerk
+  if (userId) {
+    try {
+      // Fetch user from Clerk API to get public metadata and email
+      // Note: sessionClaims in Clerk v7 does NOT include metadata by default
+      // We need to use clerkClient to fetch the full user object
+      const clerk = await clerkClient();
+      const user = await clerk.users.getUser(userId);
+      
+      // Keep this in sync with useAdminAuth, which reads Clerk public metadata
+      // on the client to render the admin UI.
+      userRole = user.publicMetadata?.role as string | undefined;
+      
+      // Get primary email address
+      const primaryEmail = user.emailAddresses.find(
+        (email: { id: string }) => email.id === user.primaryEmailAddressId
+      );
+      userEmail = primaryEmail?.emailAddress?.toLowerCase();
+      
+      // Debug: uncomment to see what's being fetched in server logs
+      // console.log(`[Middleware] User: ${userId}, Email: ${userEmail}, Role: ${userRole}`);
+    } catch (error) {
+      console.error('[Middleware] Error fetching user from Clerk:', error);
+      // Continue without admin access if Clerk API fails
+    }
+  }
 
   // Primary: check Clerk public metadata role
   // Fallback: check email (backwards compatibility)

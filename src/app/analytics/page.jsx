@@ -72,16 +72,16 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:flex lg:pb-0">
       {/* Admin Sidebar */}
       <AdminSidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="min-w-0 flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="px-6">
-            <div className="flex items-center justify-between h-16">
+          <div className="px-4 sm:px-6">
+            <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 px-6 py-6">
+        <div className="flex-1 px-4 py-6 sm:px-6">
           <SimpleAnalyticsDashboard 
             products={products}
             orders={orders}

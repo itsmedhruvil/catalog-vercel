@@ -331,12 +331,12 @@ export default function CatalogClient({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:flex lg:pb-0">
       {/* Admin Sidebar - only visible for admin users */}
       {isLoaded && isAdmin && <AdminSidebar />}
 
       {/* Main Content */}
-      <div className="flex-1 min-h-screen font-inter text-gray-900">
+      <div className="min-w-0 flex-1 min-h-screen font-inter text-gray-900">
         <style>{`
           .no-scrollbar::-webkit-scrollbar { display: none; }
           .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

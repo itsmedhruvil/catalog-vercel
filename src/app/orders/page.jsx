@@ -214,15 +214,15 @@ export default function OrdersPage() {
   const statuses = ['all', ...new Set(orders.map(o => o.orderStatus || o.status || 'pending'))];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:flex lg:pb-0">
       {/* Admin Sidebar */}
       <AdminSidebar />
 
-      <div className="flex-1 flex flex-col">
+      <div className="min-w-0 flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="px-6">
-            <div className="flex items-center justify-between h-16">
+          <div className="px-4 sm:px-6">
+            <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
                 <p className="text-sm text-gray-500">Manage all customer orders</p>
@@ -253,9 +253,9 @@ export default function OrdersPage() {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 px-6 py-6">
+        <div className="flex-1 px-4 py-6 sm:px-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -324,7 +324,7 @@ export default function OrdersPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {statuses.map(status => (
                   <button
                     key={status}
@@ -344,14 +344,14 @@ export default function OrdersPage() {
 
           {/* Bulk Actions Toolbar */}
           {selectedOrders.size > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <CheckSquare size={20} className="text-blue-600" />
                 <span className="text-sm font-medium text-blue-800">
                   {selectedOrders.size} order{selectedOrders.size > 1 ? 's' : ''} selected
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleBulkConfirm}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium flex items-center gap-1"
@@ -441,7 +441,7 @@ export default function OrdersPage() {
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Checkbox + Order Info */}
-                      <div className="flex items-start gap-3 flex-1">
+                      <div className="flex min-w-0 items-start gap-3 flex-1">
                         <div onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
@@ -450,9 +450,9 @@ export default function OrdersPage() {
                             className="w-4 h-4 mt-1 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                           />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="font-semibold text-gray-900">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className="font-semibold text-gray-900 break-words">
                               Order #{order.orderNumber || order.id?.slice(-6).toUpperCase() || 'N/A'}
                             </span>
                             <span
@@ -480,7 +480,7 @@ export default function OrdersPage() {
                       </div>
 
                       {/* Items Preview */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2 overflow-x-auto md:overflow-visible">
                         {order.items?.slice(0, 3).map((item, index) => (
                           <div
                             key={index}
@@ -509,7 +509,7 @@ export default function OrdersPage() {
                       </div>
 
                       {/* Quick Actions */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {status === 'pending' && (
                           <button
                             onClick={(e) => handleMarkConfirmed(e, order)}
