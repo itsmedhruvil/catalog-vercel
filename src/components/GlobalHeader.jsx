@@ -47,9 +47,18 @@ export default function GlobalHeader() {
     if (isSigningOut) return
     setIsSigningOut(true)
     try {
-      await signOut({ redirectUrl: '/catalog' })
+      // Use a timeout to prevent infinite loading if Clerk hangs
+      const signOutPromise = signOut({ redirectUrl: '/catalog' })
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Sign out timed out')), 8000)
+      )
+      await Promise.race([signOutPromise, timeoutPromise])
     } catch (error) {
       console.error('Sign out error:', error)
+      // Force redirect as fallback - clear cookies manually
+      document.cookie.split(";").forEach(c => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
       window.location.href = '/catalog'
     }
   }, [signOut, isSigningOut])

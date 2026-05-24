@@ -2,13 +2,18 @@
 import {
   clerkMiddleware,
   createRouteMatcher,
-  clerkClient,
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { checkIsAdmin } from '@/lib/admin';
 
 // Define public routes that don't require authentication
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
+const isPublicRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  // Clerk internal callback/handover routes
+  "/sign-in-fallback(.*)",
+  "/sign-up-fallback(.*)",
+]);
 
 // Define strictly admin-only routes (including /orders for admin order management)
 const isAdminRoute = createRouteMatcher([
@@ -26,53 +31,29 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  // Get user authentication status
-  const { userId } = await auth();
+  // Get user authentication status and session claims from the JWT
+  // NOTE: sessionClaims contains the JWT claims embedded in the session, 
+  // including public metadata if configured in Clerk JWT template.
+  // This is MUCH faster than fetching from Clerk API.
+  const { userId, sessionClaims } = await auth();
 
   const pathname = req.nextUrl.pathname;
   const isMyOrdersRoute = pathname === "/my-orders";
   const isCheckoutRoute = pathname === "/checkout";
   const isOrderReceiptRoute = /^\/orders\/[^\/]+\/receipt$/.test(pathname);
 
-  // Initialize role and email - fetched from Clerk API when authenticated.
-  let userRole: string | undefined;
-  let userEmail: string | undefined;
+  // Extract role from session claims (no Clerk API call needed)
+  // Using bracket access to bypass strict typing on the metadata object
+  const metadata = (sessionClaims as Record<string, unknown>)?.metadata as Record<string, unknown> | undefined;
+  const userRole = metadata?.role as string | undefined;
+  const userEmail = (sessionClaims as Record<string, unknown>)?.email as string | undefined;
 
-  // If user is authenticated, fetch their public metadata from Clerk
-  if (userId) {
-    try {
-      // Fetch user from Clerk API to get public metadata and email
-      // Note: sessionClaims in Clerk v7 does NOT include metadata by default
-      // We need to use clerkClient to fetch the full user object
-      const clerk = await clerkClient();
-      const user = await clerk.users.getUser(userId);
-      
-      // Keep this in sync with useAdminAuth, which reads Clerk public metadata
-      // on the client to render the admin UI.
-      userRole = user.publicMetadata?.role as string | undefined;
-      
-      // Get primary email address
-      const primaryEmail = user.emailAddresses.find(
-        (email: { id: string }) => email.id === user.primaryEmailAddressId
-      );
-      userEmail = primaryEmail?.emailAddress?.toLowerCase();
-      
-      // Debug: uncomment to see what's being fetched in server logs
-      // console.log(`[Middleware] User: ${userId}, Email: ${userEmail}, Role: ${userRole}`);
-    } catch (error) {
-      console.error('[Middleware] Error fetching user from Clerk:', error);
-      // Continue without admin access if Clerk API fails
-    }
-  }
-
-  // Primary: check Clerk public metadata role
+  // Primary: check Clerk public metadata role from session claims
   // Fallback: check email (backwards compatibility)
+  // Always allow in development mode
   const isAdmin =
     process.env.NODE_ENV === "development" ||
     checkIsAdmin({ role: userRole, email: userEmail });
-
-  // Debugging: Uncomment the line below to see why access is being denied in your server logs
-  // console.log(`[Middleware] Path: ${req.nextUrl.pathname}, Email: ${userEmail}, Role: ${userRole}, isAdmin: ${isAdmin}`);
 
   // For customer routes, allow access to authenticated users
   if (isMyOrdersRoute || isCheckoutRoute || isOrderReceiptRoute) {
@@ -224,6 +205,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
+    // Skip static files and Next.js internals
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     "/(api|trpc)(.*)",
   ],

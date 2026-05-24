@@ -1,27 +1,21 @@
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { getAdminEmails } from '@/lib/admin'
+import { checkIsAdmin } from '@/lib/admin'
 
 export default async function Home() {
   const { userId, sessionClaims } = await auth()
   
   // If user is signed in, check if they're an admin
   if (userId) {
-    const userEmail =
-      sessionClaims?.email ||
-      sessionClaims?.email_address ||
-      sessionClaims?.primary_email_address ||
-      sessionClaims?.primaryEmailAddress
-    const user = userEmail ? null : await currentUser()
-    const resolvedEmail =
-      userEmail ||
-      user?.primaryEmailAddress?.emailAddress ||
-      user?.emailAddresses?.[0]?.emailAddress
-    const adminEmails = getAdminEmails()
-    const isAdmin =
-      resolvedEmail &&
-      (adminEmails.includes(String(resolvedEmail).toLowerCase()) ||
-        process.env.NODE_ENV === 'development')
+    // Extract role from session claims - NO Clerk API call needed
+    // sessionClaims contains JWT claims which may include metadata
+    const claims = sessionClaims || {};
+    const metadata = claims.metadata || {};
+    const userRole = metadata.role;
+    // Clerk typically includes the email in the JWT as 'email' claim
+    const userEmail = claims.email;
+    
+    const isAdmin = checkIsAdmin({ role: userRole, email: userEmail });
     
     // Redirect admin users to the management dashboard instead of the public catalog
     if (isAdmin) {
