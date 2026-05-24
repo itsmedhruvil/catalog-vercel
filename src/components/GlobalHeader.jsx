@@ -110,10 +110,10 @@ export default function GlobalHeader() {
             {/* Logo / Brand */}
             <button 
               onClick={() => router.push(isAdmin ? '/admin' : '/catalog')}
-              className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"
+              className="flex items-center gap-1.5 text-base sm:text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors truncate max-w-[120px] sm:max-w-none"
             >
-              {displayIsAdmin ? <Shield size={20} /> : <Home size={20} />}
-              <span className="hidden sm:inline">{displayIsAdmin ? 'Admin' : 'Catalog'}</span>
+              {displayIsAdmin ? <Shield size={18} className="shrink-0" /> : <Home size={18} className="shrink-0" />}
+              <span className="truncate">{displayIsAdmin ? 'Admin' : 'Catalog'}</span>
             </button>
 
             {/* Right Side Actions */}
@@ -150,9 +150,10 @@ export default function GlobalHeader() {
 
               {/* Sign In / Admin Badge */}
               {isSignedIn && displayIsAdmin && (
-                <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-full text-sm font-medium">
-                  <Shield size={14} />
-                  <span className="hidden sm:inline">Admin</span>
+                <div className="flex items-center gap-1 bg-blue-600 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-sm font-medium shrink-0">
+                  <Shield size={12} className="sm:hidden" />
+                  <Shield size={14} className="hidden sm:block" />
+                  <span className="text-[10px] sm:text-sm">Admin</span>
                 </div>
               )}
 
@@ -227,10 +228,11 @@ export default function GlobalHeader() {
               ) : (
                 <button
                   onClick={() => router.push('/sign-in')}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-full text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors shrink-0"
                 >
-                  <LogIn size={16} />
+                  <LogIn size={15} />
                   <span className="hidden sm:inline">Sign In</span>
+                  <span className="sm:hidden">Login</span>
                 </button>
               )}
 

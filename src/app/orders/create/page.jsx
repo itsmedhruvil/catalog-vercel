@@ -180,8 +180,9 @@ export default function CreateOrderPage() {
         // User is signed in but not an admin - redirect to catalog
         router.push('/catalog');
       } else if (!isSignedIn) {
-        // User is not signed in - redirect to sign in
-        router.push('/sign-in');
+        // User is not signed in - redirect to sign in with redirect_url
+        const currentPath = window.location.pathname + window.location.search;
+        router.push(`/sign-in?redirect_url=${encodeURIComponent(currentPath)}`);
       }
     }
     

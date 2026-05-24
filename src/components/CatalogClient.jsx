@@ -603,9 +603,9 @@ function ProductCard({
       </div>
 
       {/* Details */}
-      <div className="p-4 flex flex-col flex-1 bg-white">
+      <div className="p-3 sm:p-4 flex flex-col flex-1 bg-white">
         <div className="flex justify-between items-start gap-2 mb-2">
-          <h3 className="text-[15px] font-semibold text-slate-900 leading-tight line-clamp-2 flex-1">
+          <h3 className="text-sm sm:text-[15px] font-semibold text-slate-900 leading-tight line-clamp-2 flex-1">
             {displayName}
           </h3>
           {isAdmin && !isSelectionMode && (
@@ -623,18 +623,18 @@ function ProductCard({
 
         <div className="flex flex-col space-y-1 mt-auto antialiased">
           {product.size && (
-            <p className="text-[13px] font-medium text-slate-500 truncate">
+            <p className="text-xs sm:text-[13px] font-medium text-slate-500 truncate">
               Size: <span className="text-slate-700">{product.size}</span>
             </p>
           )}
           {product.pcsPerCarton && (
-            <p className="text-[13px] font-medium text-slate-500 truncate">
+            <p className="text-xs sm:text-[13px] font-medium text-slate-500 truncate">
               Packing:{" "}
               <span className="text-slate-700">{product.pcsPerCarton}</span>
             </p>
           )}
           {(showStock || isAdmin) && product.calculatedAvailable !== "" && (
-            <p className="text-[13px] font-medium text-slate-500 truncate mt-1">
+            <p className="text-xs sm:text-[13px] font-medium text-slate-500 truncate mt-1">
               Stock:{" "}
               <span className="text-slate-700">
                 {product.calculatedAvailable}
@@ -647,18 +647,18 @@ function ProductCard({
             </p>
           )}
           {isSoldOut ? (
-            <p className="text-[13px] font-bold text-red-600 pt-1.5 truncate uppercase tracking-wider">
+            <p className="text-xs sm:text-[13px] font-bold text-red-600 pt-1.5 truncate uppercase tracking-wider">
               Sold Out
             </p>
           ) : (
             !hidePrice && (
-              <p className="text-[15px] font-semibold text-slate-900 pt-1.5 truncate">
+              <p className="text-sm sm:text-[15px] font-semibold text-slate-900 pt-1.5 truncate">
                 ₹{displayPrice}
               </p>
             )
           )}
           {product.deliveryTime && (
-            <p className="text-[12px] font-medium text-amber-600 truncate mt-0.5">
+            <p className="text-[11px] sm:text-[12px] font-medium text-amber-600 truncate mt-0.5">
               Delivery:{" "}
               <span className="text-amber-700">{product.deliveryTime}</span>
             </p>

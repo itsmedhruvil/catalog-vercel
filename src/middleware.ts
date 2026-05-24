@@ -59,7 +59,7 @@ export default clerkMiddleware(async (auth, req) => {
   if (isMyOrdersRoute || isCheckoutRoute || isOrderReceiptRoute) {
     if (!userId) {
       const signInUrl = new URL("/sign-in", req.url);
-      signInUrl.searchParams.set("redirect_url", req.url);
+      signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname);
       return NextResponse.redirect(signInUrl);
     }
     return NextResponse.next();
@@ -69,7 +69,7 @@ export default clerkMiddleware(async (auth, req) => {
   if (isAdminRoute(req)) {
     if (!userId) {
       const signInUrl = new URL("/sign-in", req.url);
-      signInUrl.searchParams.set("redirect_url", req.url);
+      signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname);
       return NextResponse.redirect(signInUrl);
     }
 

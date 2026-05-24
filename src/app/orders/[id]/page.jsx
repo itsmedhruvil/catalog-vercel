@@ -56,8 +56,9 @@ export default function OrderDetailsPage() {
         // User is signed in but not an admin - redirect to catalog
         router.push('/catalog');
       } else if (!isSignedIn) {
-        // User is not signed in - redirect to sign in
-        router.push('/sign-in');
+        // User is not signed in - redirect to sign in with redirect_url
+        const currentPath = window.location.pathname + window.location.search;
+        router.push(`/sign-in?redirect_url=${encodeURIComponent(currentPath)}`);
       }
     }
     
@@ -322,16 +323,16 @@ export default function OrderDetailsPage() {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <button
                 onClick={() => router.push('/orders')}
-                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
               >
-                <ArrowLeft size={24} />
+                <ArrowLeft size={22} />
               </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Order #{order.orderNumber}</h1>
-                <p className="text-sm text-gray-500">Order details and management</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">Order #{order.orderNumber}</h1>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Order details and management</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

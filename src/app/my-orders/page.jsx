@@ -11,9 +11,9 @@ export const metadata = {
 export default async function MyOrdersPage() {
   const { userId } = await auth()
   
-  // If not signed in, redirect to sign in
+  // If not signed in, redirect to sign in with redirect_url set to /my-orders
   if (!userId) {
-    redirect('/sign-in')
+    redirect(`/sign-in?redirect_url=${encodeURIComponent('/my-orders')}`)
   }
   
   // Get user's email from session claims
