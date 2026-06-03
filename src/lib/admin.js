@@ -55,6 +55,32 @@ const getFirstString = (...values) => {
   return undefined;
 };
 
+const getPrimaryEmailFromUser = (user = {}) => {
+  if (user.primaryEmailAddress?.emailAddress) {
+    return user.primaryEmailAddress.emailAddress;
+  }
+
+  if (user.primaryEmailAddress?.email) {
+    return user.primaryEmailAddress.email;
+  }
+
+  if (user.primaryEmailAddressId && Array.isArray(user.emailAddresses)) {
+    const primaryEmail = user.emailAddresses.find(
+      emailAddress => emailAddress.id === user.primaryEmailAddressId,
+    );
+
+    if (primaryEmail?.emailAddress) {
+      return primaryEmail.emailAddress;
+    }
+  }
+
+  if (Array.isArray(user.emailAddresses) && user.emailAddresses.length > 0) {
+    return user.emailAddresses[0]?.emailAddress || user.emailAddresses[0]?.email;
+  }
+
+  return user.email;
+};
+
 // Clerk session claims can vary depending on the JWT template/version.
 // Normalize the common shapes so server middleware matches client-side useUser().
 export const getAdminIdentityFromClaims = (claims = {}) => {
@@ -84,6 +110,25 @@ export const getAdminIdentityFromClaims = (claims = {}) => {
     claims.primaryEmailAddress?.email,
     primaryEmail,
   );
+
+  return { role, email };
+};
+
+// Clerk's client and backend user objects expose metadata slightly differently
+// from session claims. Normalize them so UI and route protection agree.
+export const getAdminIdentityFromUser = (user = {}) => {
+  const publicMetadata = user.publicMetadata || user.public_metadata || {};
+  const privateMetadata = user.privateMetadata || user.private_metadata || {};
+  const unsafeMetadata = user.unsafeMetadata || user.unsafe_metadata || {};
+
+  const role = getFirstString(
+    publicMetadata.role,
+    privateMetadata.role,
+    unsafeMetadata.role,
+    user.role,
+  );
+
+  const email = getFirstString(getPrimaryEmailFromUser(user));
 
   return { role, email };
 };

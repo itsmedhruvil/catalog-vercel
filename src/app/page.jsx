@@ -1,6 +1,6 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { checkIsAdmin, getAdminIdentityFromClaims } from '@/lib/admin'
+import { checkIsAdmin, getAdminIdentityFromClaims, getAdminIdentityFromUser } from '@/lib/admin'
 
 export default async function Home() {
   const { userId, sessionClaims } = await auth()
@@ -9,7 +9,13 @@ export default async function Home() {
   if (userId) {
     const { role: userRole, email: userEmail } = getAdminIdentityFromClaims(sessionClaims);
     
-    const isAdmin = checkIsAdmin({ role: userRole, email: userEmail });
+    let isAdmin = checkIsAdmin({ role: userRole, email: userEmail });
+
+    if (!isAdmin) {
+      const user = await currentUser();
+      const { role, email } = getAdminIdentityFromUser(user || {});
+      isAdmin = checkIsAdmin({ role, email });
+    }
     
     // Redirect admin users to the management dashboard instead of the public catalog
     if (isAdmin) {

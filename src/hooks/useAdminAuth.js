@@ -2,19 +2,20 @@
 
 import { useUser, useClerk } from '@clerk/nextjs'
 import { useMemo, useCallback, useEffect, useState } from 'react'
-import { enableAdminMode, disableAdminMode, checkIsAdmin, isAdminMode as checkAdminMode } from '@/lib/admin'
+import { enableAdminMode, disableAdminMode, checkIsAdmin, getAdminIdentityFromUser, isAdminMode as checkAdminMode } from '@/lib/admin'
 
 export default function useAdminAuth() {
   const { isSignedIn, user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const [adminModeConfirmed, setAdminModeConfirmed] = useState(false)
 
-  // Get email from user object
-  const userEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || user?.email
+  const adminIdentity = useMemo(
+    () => getAdminIdentityFromUser(user || {}),
+    [user],
+  )
 
-  // Get admin role from Clerk public metadata (set via Clerk Dashboard)
-  // Go to Clerk Dashboard → Users → Select user → Public metadata → {"role": "admin"}
-  const userRole = user?.publicMetadata?.role
+  const userEmail = adminIdentity.email
+  const userRole = adminIdentity.role
 
   // Check if the user has admin access (primary: role metadata, fallback: email)
   const hasAdminAccess = useMemo(() => {

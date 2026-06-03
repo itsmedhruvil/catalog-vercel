@@ -31,29 +31,6 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/catalog.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Product Catalog - Browse and manage products"
-    },
-    {
-      "src": "/screenshots/orders.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Orders - Track and manage customer orders"
-    },
-    {
-      "src": "/screenshots/dashboard.png",
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard - Admin analytics overview"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Catalog",

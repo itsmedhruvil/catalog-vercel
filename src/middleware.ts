@@ -1,10 +1,11 @@
 /// <reference types="node" />
 import {
+  clerkClient,
   clerkMiddleware,
   createRouteMatcher,
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { checkIsAdmin, getAdminIdentityFromClaims } from '@/lib/admin';
+import { checkIsAdmin, getAdminIdentityFromClaims, getAdminIdentityFromUser } from '@/lib/admin';
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -46,12 +47,42 @@ export default clerkMiddleware(async (auth, req) => {
     sessionClaims as Record<string, unknown> | undefined,
   );
 
-  // Primary: check Clerk public metadata role from session claims
-  // Fallback: check email (backwards compatibility)
-  // Always allow in development mode
-  const isAdmin =
-    process.env.NODE_ENV === "development" ||
-    checkIsAdmin({ role: userRole, email: userEmail });
+  let adminCheck: boolean | undefined;
+
+  const getIsAdmin = async () => {
+    if (adminCheck !== undefined) {
+      return adminCheck;
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      adminCheck = true;
+      return adminCheck;
+    }
+
+    // Fast path: role/email is already present in the session claims.
+    if (checkIsAdmin({ role: userRole, email: userEmail })) {
+      adminCheck = true;
+      return adminCheck;
+    }
+
+    if (!userId) {
+      adminCheck = false;
+      return adminCheck;
+    }
+
+    // Some Clerk JWT/session configurations omit public metadata or email
+    // from sessionClaims. For admin gates, fall back to the backend user object.
+    try {
+      const user = await (await clerkClient()).users.getUser(userId);
+      const { role, email } = getAdminIdentityFromUser(user);
+      adminCheck = checkIsAdmin({ role, email });
+    } catch (error) {
+      console.error("Failed to resolve Clerk admin identity:", error);
+      adminCheck = false;
+    }
+
+    return adminCheck;
+  };
 
   // For customer routes, allow access to authenticated users
   if (isMyOrdersRoute || isCheckoutRoute || isOrderReceiptRoute) {
@@ -71,7 +102,7 @@ export default clerkMiddleware(async (auth, req) => {
       return NextResponse.redirect(signInUrl);
     }
 
-    if (!isAdmin) {
+    if (!(await getIsAdmin())) {
       return NextResponse.redirect(new URL("/catalog", req.url));
     }
   }
@@ -93,7 +124,7 @@ export default clerkMiddleware(async (auth, req) => {
         });
       }
 
-      if (!isAdmin) {
+      if (!(await getIsAdmin())) {
         return new NextResponse(
           JSON.stringify({ error: "Forbidden - Admin access required" }),
           {
@@ -114,7 +145,7 @@ export default clerkMiddleware(async (auth, req) => {
         });
       }
 
-      if (!isAdmin) {
+      if (!(await getIsAdmin())) {
         return new NextResponse(
           JSON.stringify({ error: "Forbidden - Admin access required" }),
           {
@@ -186,7 +217,7 @@ export default clerkMiddleware(async (auth, req) => {
         });
       }
 
-      if (!isAdmin) {
+      if (!(await getIsAdmin())) {
         return new NextResponse(
           JSON.stringify({ error: "Forbidden - Admin access required" }),
           {
