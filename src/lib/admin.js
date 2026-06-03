@@ -45,6 +45,49 @@ export const checkIsAdmin = ({ role, email } = {}) => {
   return false;
 };
 
+const getFirstString = (...values) => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+// Clerk session claims can vary depending on the JWT template/version.
+// Normalize the common shapes so server middleware matches client-side useUser().
+export const getAdminIdentityFromClaims = (claims = {}) => {
+  const metadata = claims.metadata || {};
+  const publicMetadata = claims.publicMetadata || claims.public_metadata || {};
+  const privateMetadata = claims.privateMetadata || claims.private_metadata || {};
+  const unsafeMetadata = claims.unsafeMetadata || claims.unsafe_metadata || {};
+
+  const role = getFirstString(
+    metadata.role,
+    publicMetadata.role,
+    privateMetadata.role,
+    unsafeMetadata.role,
+    claims.role,
+  );
+
+  const primaryEmail =
+    Array.isArray(claims.emailAddresses) && claims.emailAddresses.length > 0
+      ? claims.emailAddresses[0]?.emailAddress || claims.emailAddresses[0]?.email
+      : undefined;
+
+  const email = getFirstString(
+    claims.email,
+    claims.email_address,
+    claims.primary_email_address,
+    claims.primaryEmailAddress?.emailAddress,
+    claims.primaryEmailAddress?.email,
+    primaryEmail,
+  );
+
+  return { role, email };
+};
+
 // Check if user is in admin mode (client-side)
 export const isAdminMode = () => {
   if (typeof window !== 'undefined') {

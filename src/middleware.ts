@@ -4,7 +4,7 @@ import {
   createRouteMatcher,
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { checkIsAdmin } from '@/lib/admin';
+import { checkIsAdmin, getAdminIdentityFromClaims } from '@/lib/admin';
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -42,11 +42,9 @@ export default clerkMiddleware(async (auth, req) => {
   const isCheckoutRoute = pathname === "/checkout";
   const isOrderReceiptRoute = /^\/orders\/[^\/]+\/receipt$/.test(pathname);
 
-  // Extract role from session claims (no Clerk API call needed)
-  // Using bracket access to bypass strict typing on the metadata object
-  const metadata = (sessionClaims as Record<string, unknown>)?.metadata as Record<string, unknown> | undefined;
-  const userRole = metadata?.role as string | undefined;
-  const userEmail = (sessionClaims as Record<string, unknown>)?.email as string | undefined;
+  const { role: userRole, email: userEmail } = getAdminIdentityFromClaims(
+    sessionClaims as Record<string, unknown> | undefined,
+  );
 
   // Primary: check Clerk public metadata role from session claims
   // Fallback: check email (backwards compatibility)
