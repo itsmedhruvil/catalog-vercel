@@ -1,4 +1,7 @@
 // PWABuilder Service Worker - https://github.com/pwa-builder/PWABuilder
+// Fixed: proper redirect handling and navigation support
+
+const CACHE_NAME = 'pwa-cache-v1';
 
 const HOSTNAME_WHITELIST = [
     self.location.hostname,
@@ -10,37 +13,83 @@ const HOSTNAME_WHITELIST = [
     'picsum.photos'
 ]
 
-const getFixedUrl = (req) => {
-    var now = Date.now()
-    var url = new URL(req.url)
-    url.protocol = self.location.protocol
-    if (url.hostname === self.location.hostname) {
-        url.search += (url.search ? '&' : '?') + 'cache-bust=' + now
-    }
-    return url.href
-}
+self.addEventListener('install', event => {
+    self.skipWaiting();
+})
 
 self.addEventListener('activate', event => {
-    event.waitUntil(self.clients.claim())
+    event.waitUntil(
+        Promise.all([
+            self.clients.claim(),
+            // Clean up old cache versions
+            caches.keys().then(keys => {
+                return Promise.all(
+                    keys.filter(key => key !== CACHE_NAME)
+                        .map(key => caches.delete(key))
+                )
+            })
+        ])
+    )
 })
 
 self.addEventListener('fetch', event => {
-    if (HOSTNAME_WHITELIST.indexOf(new URL(event.request.url).hostname) > -1) {
-        const cached = caches.match(event.request)
-        const fixedUrl = getFixedUrl(event.request)
-        const fetched = fetch(fixedUrl, { cache: 'no-store' })
-        const fetchedCopy = fetched.then(resp => resp.clone())
-
-        event.respondWith(
-            Promise.race([fetched.catch(_ => cached), cached])
-                .then(resp => resp || fetched)
-                .catch(_ => { /* eat any errors */ })
-        )
-
-        event.waitUntil(
-            Promise.all([fetchedCopy, caches.open("pwa-cache")])
-                .then(([response, cache]) => response.ok && cache.put(event.request, response))
-                .catch(_ => { /* eat any errors */ })
-        )
+    const url = new URL(event.request.url)
+    const hostname = url.hostname
+    
+    // Only intercept whitelisted hostnames
+    if (HOSTNAME_WHITELIST.indexOf(hostname) === -1) {
+        return
     }
+    
+    // Only handle GET requests
+    if (event.request.method !== 'GET') {
+        return
+    }
+    
+    // For navigation requests (HTML pages), use network-first strategy
+    // This is critical because redirects (e.g., Clerk auth middleware)
+    // must be followed by the browser, not intercepted by the SW
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    // Only cache successful responses, NOT redirects
+                    if (response.ok) {
+                        const cloned = response.clone()
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, cloned)
+                        })
+                    }
+                    return response
+                })
+                .catch(() => {
+                    return caches.match(event.request)
+                })
+        )
+        return
+    }
+    
+    // For non-navigation requests (static assets, images, API calls on same origin)
+    // Use cache-first strategy with network fallback
+    event.respondWith(
+        caches.match(event.request)
+            .then(cached => {
+                if (cached) {
+                    return cached
+                }
+                return fetch(event.request).then(response => {
+                    // Only cache successful responses
+                    if (response.ok) {
+                        const cloned = response.clone()
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, cloned)
+                        })
+                    }
+                    return response
+                })
+            })
+            .catch(() => {
+                return caches.match(event.request)
+            })
+    )
 })

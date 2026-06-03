@@ -5,19 +5,25 @@ import { useEffect } from 'react';
 export default function PWARegistration() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      // Register the PWABuilder service worker
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('PWABuilder Service Worker registered with scope:', registration.scope);
-
-          // Check for updates on page navigation
+      // First, unregister any existing service workers to clear out old buggy ones
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      }).then(() => {
+        // Register the clean service worker
+        return navigator.serviceWorker.register('/sw.js')
+      }).then((registration) => {
+          console.log('Service Worker registered with scope:', registration.scope);
+          
+          // Auto-update when a new SW is found
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New service worker available - show update notification
-                  console.log('New version available!');
+                  // New version available - reload to activate
+                  window.location.reload();
                 }
               });
             }
@@ -27,7 +33,7 @@ export default function PWARegistration() {
           console.error('Service Worker registration failed:', error);
         });
 
-      // Handle service worker updates
+      // Handle service worker updates - only reload once
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
