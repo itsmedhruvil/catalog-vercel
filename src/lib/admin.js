@@ -83,7 +83,8 @@ const getPrimaryEmailFromUser = (user = {}) => {
 
 // Clerk session claims can vary depending on the JWT template/version.
 // Normalize the common shapes so server middleware matches client-side useUser().
-export const getAdminIdentityFromClaims = (claims = {}) => {
+export const getAdminIdentityFromClaims = (claims) => {
+  claims = claims ?? {};
   const metadata = claims.metadata || {};
   const publicMetadata = claims.publicMetadata || claims.public_metadata || {};
   const privateMetadata = claims.privateMetadata || claims.private_metadata || {};
