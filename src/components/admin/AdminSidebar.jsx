@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -37,25 +38,25 @@ export default function AdminSidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex gap-1 overflow-x-auto px-2 py-2 lg:flex-1 lg:flex-col lg:space-y-1 lg:overflow-visible lg:p-3">
+      <nav className="grid grid-cols-4 gap-1 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:flex lg:flex-1 lg:flex-col lg:space-y-1 lg:overflow-visible lg:p-3">
         {adminLinks.map((link) => {
           const isActive = pathname === link.href || 
             (link.href !== '/admin' && pathname?.startsWith(link.href));
           const Icon = link.icon;
 
           return (
-            <button
+            <Link
               key={link.href}
-              onClick={() => router.push(link.href)}
-              className={`flex min-w-[4.75rem] shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors lg:min-w-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
+              href={link.href}
+              className={`flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[11px] font-medium transition-colors lg:min-h-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
                 isActive
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
               <Icon size={18} />
-              <span className="leading-tight">{link.label}</span>
-            </button>
+              <span className="max-w-full truncate leading-tight">{link.label}</span>
+            </Link>
           );
         })}
       </nav>

@@ -1,7 +1,7 @@
 // PWABuilder Service Worker - https://github.com/pwa-builder/PWABuilder
 // Fixed: proper redirect handling and navigation support
 
-const CACHE_NAME = 'pwa-cache-v1';
+const CACHE_NAME = 'pwa-cache-v2';
 
 const HOSTNAME_WHITELIST = [
     self.location.hostname,
@@ -46,10 +46,20 @@ self.addEventListener('fetch', event => {
         return
     }
     
-    // For navigation requests (HTML pages), use network-first strategy
-    // This is critical because redirects (e.g., Clerk auth middleware)
-    // must be followed by the browser, not intercepted by the SW
-    if (event.request.mode === 'navigate') {
+    const isSameOrigin = url.origin === self.location.origin
+    const isAppRouteRequest =
+        isSameOrigin &&
+        (
+            event.request.mode === 'navigate' ||
+            event.request.headers.get('accept')?.includes('text/html') ||
+            event.request.headers.get('accept')?.includes('text/x-component') ||
+            url.searchParams.has('_rsc')
+        )
+
+    // App routes and Next.js RSC payloads must be network-first. Client-side
+    // router transitions are fetches, so cache-first here can trap the PWA on
+    // an old route when moving from Products to other admin pages.
+    if (isAppRouteRequest) {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
@@ -66,6 +76,11 @@ self.addEventListener('fetch', event => {
                     return caches.match(event.request)
                 })
         )
+        return
+    }
+
+    if (isSameOrigin && (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/'))) {
+        event.respondWith(fetch(event.request))
         return
     }
     

@@ -214,7 +214,7 @@ export default function OrdersPage() {
   const statuses = ['all', ...new Set(orders.map(o => o.orderStatus || o.status || 'pending'))];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 lg:flex lg:pb-0">
+    <div className="min-h-screen bg-gray-50 pb-36 lg:flex lg:pb-0">
       {/* Admin Sidebar */}
       <AdminSidebar />
 
