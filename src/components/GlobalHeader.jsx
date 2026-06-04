@@ -97,8 +97,8 @@ export default function GlobalHeader() {
     return null
   }
 
-  // Keep the top bar visible on admin pages, but hide the menu button and off-canvas menu
-  // since the AdminSidebar provides the navigation instead
+  // Show the menu button on mobile even for admin pages since the bottom nav bar was removed.
+  // On desktop (lg+), the sidebar provides navigation so the menu button is hidden.
   const isAdminPage = displayIsAdmin && ['/admin', '/orders', '/alerts', '/clients', '/analytics', '/delivery', '/catalog'].some(path => pathname?.startsWith(path))
 
   return (
@@ -236,23 +236,21 @@ export default function GlobalHeader() {
                 </button>
               )}
 
-              {/* Menu Button - hidden on admin pages since sidebar provides navigation */}
-              {!isAdminPage && (
-                <button
-                  onClick={() => setIsMenuOpen(true)}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                  title="Menu"
-                >
-                  <Menu size={20} />
-                </button>
-              )}
+              {/* Menu Button - shown on all pages on mobile. On desktop (lg+), the sidebar provides navigation so it's hidden */}
+              <button
+                onClick={() => setIsMenuOpen(true)}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors lg:hidden"
+                title="Menu"
+              >
+                <Menu size={20} />
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Off-Canvas Menu - hidden on admin pages since sidebar provides navigation */}
-      {!isAdminPage && isMenuOpen && (
+      {/* Off-Canvas Menu - shown on all pages on mobile, hidden on desktop (lg+) where sidebar provides navigation */}
+      {isMenuOpen && (
         <>
           {/* Overlay */}
           <div 

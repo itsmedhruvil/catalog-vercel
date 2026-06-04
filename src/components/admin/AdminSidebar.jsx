@@ -28,7 +28,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-x-0 bottom-0 z-40 bg-white border-t border-gray-200 lg:sticky lg:top-16 lg:inset-x-auto lg:bottom-auto lg:z-20 lg:w-64 lg:min-h-[calc(100vh-4rem)] lg:border-t-0 lg:border-r lg:flex lg:flex-col lg:shrink-0">
+    <aside className="hidden lg:sticky lg:top-16 lg:z-20 lg:w-64 lg:min-h-[calc(100vh-4rem)] lg:border-r lg:flex lg:flex-col lg:shrink-0">
       {/* Admin Header */}
       <div className="hidden p-4 border-b border-gray-200 lg:block">
         <div className="flex items-center gap-2">
@@ -38,7 +38,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="grid grid-cols-4 gap-1 px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:flex lg:flex-1 lg:flex-col lg:space-y-1 lg:overflow-visible lg:p-3">
+      <nav className="flex flex-1 flex-col space-y-1 p-3">
         {adminLinks.map((link) => {
           const isActive = pathname === link.href || 
             (link.href !== '/admin' && pathname?.startsWith(link.href));
@@ -48,7 +48,7 @@ export default function AdminSidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[11px] font-medium transition-colors lg:min-h-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
